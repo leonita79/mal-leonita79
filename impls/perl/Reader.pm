@@ -1,4 +1,5 @@
 package Reader;
+use Types;
 use Scalar::Util;
 
 sub next_token {
@@ -42,11 +43,11 @@ my %delim_class=(
   '{'=>'MalHash',
 );
 my %quote=(
-  "'"=>intern_symbol('quote'),
-  '`'=>intern_symbol('quasiquote'),
-  '~'=>intern_symbol('unquote'),
-  '~@'=>intern_symbol('splice-unquote'),
-  '@'=>intern_symbol('deref'),
+  "'"=>'quote',
+  '`'=>'quasiquote',
+  '~'=>'unquote',
+  '~@'=>'splice-unquote',
+  '@'=>'deref',
 );
 sub read_form {
     my $reader=shift;
@@ -62,27 +63,43 @@ sub read_form {
 sub read_list {
     my ($reader, $start)=@_;
     die "unbalanced" unless $delim{$start};
-    my $list=bless [], $delim_class{$start};
+    my @list;
     while($reader->peek_token() ne $delim{$start}) {
         my $val=read_form($reader);
         defined $val or die "unbalanced";
-        push @$list, $val;
+        push @list, $val;
     }
     $reader->next_token(); #swallow end delim
-    return $list;
+    $start ne '{' and return bless [ @list ], $delim_class{$start};
+
+    #make hash
+    my $hash=bless {}, $delim_class{$start};
+
+    while(@list) {
+        my $key=Types::freeze_key(shift @list);
+        @list && $key or die "bad hash";
+        $hash->{$key}=shift @list;
+    }
+    return $hash;
 }
 
 sub read_quote {
     my ($reader, $quote)=@_;
     my $name=$quote{$quote};
-    return bless [ $quote{$quote}, read_form($reader) ], 'MalList';
+    return bless [
+        Types::intern_symbol($quote{$quote}),
+        read_form($reader)
+    ], 'MalList';
 }
 
 sub read_meta {
     my $reader=shift;
     my $meta=read_form($reader);
     my $data=read_form($reader);
-    return bless [ intern_symbol('with-meta'), $data, $meta ], 'MalList';
+    return bless [
+        Types::intern_symbol('with-meta'),
+        $data, $meta
+    ], 'MalList';
 }
 
 sub read_atom {
@@ -90,13 +107,8 @@ sub read_atom {
     Scalar::Util::looks_like_number($token) and return $token;
     $token =~ /"(?:\\.|[^\\"])*"/ and return bless \$token, 'MalString'; 
     $token =~ /^"/ and die "unbalanced";
-    return intern_symbol($token);
+    return Types::intern_symbol($token);
 }
 
-my %interned_symbol;
-sub intern_symbol {
-    my $symbol=shift;
-    return $interned_symbol{$symbol} ||=bless \$symbol, 'MalSymbol';
-}
 
 1;
