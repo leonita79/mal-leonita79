@@ -62,11 +62,11 @@ sub read_form {
 
 sub read_list {
     my ($reader, $start)=@_;
-    die "unbalanced" unless $delim{$start};
+    die "unbalanced $start\n" unless $delim{$start};
     my @list;
     while($reader->peek_token() ne $delim{$start}) {
         my $val=read_form($reader);
-        defined $val or die "unbalanced";
+        defined $val or die "unbalanced $start\n";
         push @list, $val;
     }
     $reader->next_token(); #swallow end delim
@@ -77,7 +77,7 @@ sub read_list {
 
     while(@list) {
         my $key=Types::freeze_key(shift @list);
-        @list && $key or die "bad hash";
+        @list && $key or die "hash must have even number of elements\n";
         $hash->{$key}=shift @list;
     }
     return $hash;
@@ -106,7 +106,7 @@ sub read_atom {
     my $token=shift;
     Scalar::Util::looks_like_number($token) and return $token;
     $token =~ /"(?:\\.|[^\\"])*"/ and return bless \$token, 'MalString'; 
-    $token =~ /^"/ and die "unbalanced";
+    $token =~ /^"/ and die "unbalanced \"\n";
     return Types::intern_symbol($token);
 }
 
