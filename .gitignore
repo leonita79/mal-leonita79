@@ -12,6 +12,7 @@
 .sbt
 .npm
 .node-gyp
+*.swp
 package-lock.json
 */experiments
 node_modules
