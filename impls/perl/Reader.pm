@@ -104,11 +104,20 @@ sub read_meta {
 sub read_atom {
     my $token=shift;
     Scalar::Util::looks_like_number($token) and return $token;
-    $token =~ /"(?:\\.|[^\\"])*"/ and return bless \$token, 'MalString'; 
+    $token =~ /"(?:\\.|[^\\"])*"/ and return wrap_string($token); 
     $token =~ /^"/ and die "unbalanced \"\n";
     $token =~ /^:/ or return bless \$token, 'MalSymbol';
     $token="\0" . $token; 
     return bless \$token, 'MalKeyword';
+}
+
+sub wrap_string {
+    my $string=shift;
+    $string=substr $string, 1, -1;
+    $string =~ s/\\n/\n/;
+    $string =~ s/\\([^\\])/$1/;
+    $string =~ s/\\\\/\\/;
+    return bless \$string, 'MalString';
 }
 
 sub freeze_key {

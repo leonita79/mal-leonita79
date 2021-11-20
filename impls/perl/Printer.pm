@@ -1,25 +1,26 @@
 package Printer;
 
 sub pr_str {
-    my $val=shift;
+    my ($val, $print_readably)=@_;
+    $print_readably //=1;
     ref $val or return $val;
     ref $val eq 'MalSymbol' and return $$val;
     ref $val eq 'MalKeyword' and return substr $$val, 1;
-    ref $val eq 'MalString' and return $$val;
-    ref $val eq 'MalList' and return pr_list('(', $val, ')');
-    ref $val eq 'MalVector' and return pr_list('[', $val, ']');
-    ref $val eq 'MalHash' and return pr_hash('{', $val, '}');
+    ref $val eq 'MalString' and return $print_readably ? unwrap_string($val) : $$val;
+    ref $val eq 'MalList' and return pr_list('(', $val, ')', $print_readably);
+    ref $val eq 'MalVector' and return pr_list('[', $val, ']', $print_readably);
+    ref $val eq 'MalHash' and return pr_hash('{', $val, '}', $print_readably);
 }
 
 sub pr_list {
-    my ($open, $val, $close)=@_;
-    return $open . join(' ', map { pr_str($_) } @$val) . $close;
+    my ($open, $val, $close, $print_readably)=@_;
+    return $open . join(' ', map { pr_str($_, $print_readably) } @$val) . $close;
 }
 
 sub pr_hash {
-    my ($open, $val, $close)=@_;
+    my ($open, $val, $close, $print_readably)=@_;
     my @val_list=map { thaw_key($_), $val->{$_} } keys %$val;
-    return pr_list($open, \@val_list, $close);
+    return pr_list($open, \@val_list, $close, $print_readably);
 }
 
 sub thaw_key {
@@ -28,4 +29,11 @@ sub thaw_key {
     return bless \$key, $type; 
 }
 
+sub unwrap_string {
+    my $string=shift;
+    $$string =~ s/\\/\\\\/;
+    $$string =~ s/\n/\\n/;
+    $$string =~ s/"/\\"/;
+    return qq{"$$string"};
+}
 l;
