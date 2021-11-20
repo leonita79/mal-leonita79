@@ -1,5 +1,4 @@
 package Reader;
-use Types;
 use Scalar::Util;
 
 sub next_token {
@@ -75,9 +74,9 @@ sub read_list {
     #make hash
     my $hash=bless {}, $delim_class{$start};
 
+    scalar(@list)%2 and die "hash must have even number of elements\n";
     while(@list) {
-        my $key=Types::freeze_key(shift @list);
-        @list && $key or die "hash must have even number of elements\n";
+        my $key=freeze_key(shift @list);
         $hash->{$key}=shift @list;
     }
     return $hash;
@@ -87,7 +86,7 @@ sub read_quote {
     my ($reader, $quote)=@_;
     my $name=$quote{$quote};
     return bless [
-        Types::intern_symbol($quote{$quote}),
+        read_atom($quote{$quote}),
         read_form($reader)
     ], 'MalList';
 }
@@ -97,7 +96,7 @@ sub read_meta {
     my $meta=read_form($reader);
     my $data=read_form($reader);
     return bless [
-        Types::intern_symbol('with-meta'),
+        read_atom('with-meta'),
         $data, $meta
     ], 'MalList';
 }
@@ -107,8 +106,17 @@ sub read_atom {
     Scalar::Util::looks_like_number($token) and return $token;
     $token =~ /"(?:\\.|[^\\"])*"/ and return bless \$token, 'MalString'; 
     $token =~ /^"/ and die "unbalanced \"\n";
-    return Types::intern_symbol($token);
+    $token =~ /^:/ or return bless \$token, 'MalSymbol';
+    $token="\0" . $token; 
+    return bless \$token, 'MalKeyword';
 }
 
+sub freeze_key {
+    my $key=shift;
+    for(qw(MalString MalKeyword MalSymbol)) {
+        return $$key if ref($key) eq $_;
+    }
+    die "bad hash key type\n";
+}
 
 1;
