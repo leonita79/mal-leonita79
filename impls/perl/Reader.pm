@@ -106,7 +106,6 @@ sub read_atom {
     Scalar::Util::looks_like_number($token) and return $token;
     $token =~ /"(?:\\.|[^\\"])*"/ and return wrap_string($token); 
     $token =~ /^"/ and die "unbalanced \"\n";
-    $token =~ /^nil|true|false$/ and return $token;
     $token =~ /^:/ or return bless \$token, 'MalSymbol';
     $token="\0" . $token; 
     return bless \$token, 'MalKeyword';
