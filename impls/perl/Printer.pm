@@ -10,6 +10,8 @@ sub pr_str {
     ref $val eq 'MalList' and return pr_list('(', $val, ')', $print_readably);
     ref $val eq 'MalVector' and return pr_list('[', $val, ']', $print_readably);
     ref $val eq 'MalHash' and return pr_hash('{', $val, '}', $print_readably);
+    ref $val eq 'CODE' and return '#<function>';
+    die "invalid type\n";
 }
 
 sub pr_list {
@@ -31,9 +33,9 @@ sub thaw_key {
 
 sub unwrap_string {
     my $string=shift;
-    $$string =~ s/\\/\\\\/;
-    $$string =~ s/\n/\\n/;
-    $$string =~ s/"/\\"/;
+    $$string =~ s/\\/\\\\/g;
+    $$string =~ s/\n/\\n/g;
+    $$string =~ s/"/\\"/g;
     return qq{"$$string"};
 }
 l;

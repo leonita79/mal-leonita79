@@ -34,7 +34,20 @@ sub set {
     }
     return $self;
 }
-
+sub bind {
+    my ($self, $bindings, $values)=@_;
+    for(keys @$bindings) {
+        my $name=$bindings->[$_];
+        if(ref $name eq 'MalSymbol' and $$name eq '&') {
+            $name=$bindings->[$_+1];
+            $self->set($name, bless [@$values], 'MalList');
+            return $self;
+        }
+        my $value=shift @$values // 'nil';
+        $self->set($name, $value);
+    }
+    return $self;
+}
 sub find {
     my ($self, $key)=@_;
     exists $self->{$key} and return $self;

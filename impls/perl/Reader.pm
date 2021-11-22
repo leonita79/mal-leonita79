@@ -51,7 +51,7 @@ my %quote=(
 sub read_form {
     my $reader=shift;
     my $token=$reader->next_token();
-    $token or return;
+    defined $token or return;
     $token =~ /^;/ and return read_form($reader);
     exists $delim{$token} and return read_list($reader, $token);
     exists $quote{$token} and return read_quote($reader, $token);
@@ -104,6 +104,7 @@ sub read_meta {
 sub read_atom {
     my $token=shift;
     Scalar::Util::looks_like_number($token) and return $token;
+    $token =~ /^true|false|nil$/ and return $token;
     $token =~ /"(?:\\.|[^\\"])*"/ and return wrap_string($token); 
     $token =~ /^"/ and die "unbalanced \"\n";
     $token =~ /^:/ or return bless \$token, 'MalSymbol';
@@ -111,12 +112,11 @@ sub read_atom {
     return bless \$token, 'MalKeyword';
 }
 
+my %escape=(n=>"\n", '"'=>'\\"');
 sub wrap_string {
     my $string=shift;
     $string=substr $string, 1, -1;
-    $string =~ s/\\n/\n/;
-    $string =~ s/\\([^\\])/$1/;
-    $string =~ s/\\\\/\\/;
+    $string =~ s/\\(.)/$1 eq 'n' ? "\n" : $1/ge;
     return bless \$string, 'MalString';
 }
 
