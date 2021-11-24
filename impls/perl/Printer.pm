@@ -11,6 +11,7 @@ sub pr_str {
     ref $val eq 'MalVector' and return pr_list('[', $val, ']', $print_readably);
     ref $val eq 'MalHash' and return pr_hash('{', $val, '}', $print_readably);
     ref $val eq 'CODE' and return '#<function>';
+    ref $val eq 'MalAtom' and return '(atom ' . pr_str($$val,$print_readably) . ')'; 
     die "invalid type\n";
 }
 

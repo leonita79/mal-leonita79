@@ -51,6 +51,7 @@ our %ns=(
     },
     list=>sub { bless [@_], 'MalList' },
     'list?'=>sub { mal_bool(ref(shift) eq 'MalList'); },
+    'atom?'=>sub { mal_bool(ref(shift) eq 'MalAtom'); },
     'empty?'=>sub {
         my $val=shift;
         mal_bool(ref($val) eq 'MalList' || ref($val) eq 'MalVector' and !@$val);
@@ -82,9 +83,43 @@ our %ns=(
         ref(first) || ref($second) and die "can't compare non-number\n";
         mal_bool($first>=$second);
     },
+    'read-string'=>sub {
+        my $str=shift;
+        ref($str) eq 'MalString' or die "can't read from non-string\n";
+        return Reader::read_str($$str)//'nil';
+    },
+    slurp=>sub {
+        my $fn=shift;
+        ref($fn) eq 'MalString' or die "can't open non-string\n";
+        open(my $fh, '<', $$fn) or die "can't open $$fn\n";
+        my $str=do { local $/; <$fh>; };
+        return bless \$str, 'MalString';
+    },
+    eval=>sub { @_=shift; goto &::EVAL; },
+    atom=>sub { my $value=shift; return bless \$value, 'MalAtom'; },
+    deref=>sub {
+        my $atom=shift;
+        return ref $atom eq 'MalAtom' ? $$atom : 'nil';
+    },
+    'reset!'=>sub {
+        my ($atom, $value)=@_;
+        $$atom=$value if ref $atom eq 'MalAtom';
+        return $value;
+    },
+    'swap!'=>sub {
+        my ($atom, $fn, @args)=@_;
+        die "bad function\n" unless ref $fn eq 'CODE';
+        my $value=ref $atom eq 'MalAtom' ? $$atom : 'nil';
+        $value=$fn->($value, @args);
+        $$atom=$value if ref $atom eq 'MalAtom';
+        return $value;
+    },
+
 );
 our @ns=(
-    "(def! not (fn* (a) (if a false true)))",
+    '(def! not (fn* (a) (if a false true)))',
+    '(def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) "\nnil)")))))'
+
 );
 
 
