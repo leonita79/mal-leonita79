@@ -114,7 +114,24 @@ our %ns=(
         $$atom=$value if ref $atom eq 'MalAtom';
         return $value;
     },
-
+    cons=>sub {
+        my ($atom, $list)=@_;
+        die "bad argument to cons\n" unless ref $list eq 'MalList' || ref $list eq 'MalVector' || $list eq 'nil';
+        return bless [ $atom, ref $list ? @$list : () ], 'MalList';
+    },
+    concat=>sub {
+        my $list=bless [], 'MalList';
+        for(@_) {
+            die "bad argument to concat\n" unless ref eq 'MalList' || ref eq 'MalVector' || $_ eq 'nil';
+            push @$list, @$_ if ref;
+        }
+        return $list;
+    },
+    vec=>sub {
+        my $vec=shift;
+        return $vec unless ref $vec eq 'MalList';
+        return bless [ @$vec ], 'MalVector';
+    },
 );
 our @ns=(
     '(def! not (fn* (a) (if a false true)))',
