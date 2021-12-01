@@ -1,4 +1,5 @@
 package Core;
+use Scalar::Util;
 
 sub mal_bool { return shift ? 'true' : 'false'; }
 sub mal_equal {
@@ -132,11 +133,29 @@ our %ns=(
         return $vec unless ref $vec eq 'MalList';
         return bless [ @$vec ], 'MalVector';
     },
+    nth=>sub {
+        my ($list, $index)=@_;
+        ref $list eq 'MalList' || ref $list eq 'MalVector' or die "bad list in nth\n"; 
+        Scalar::Util::looks_like_number($index) && $index>=0 && $index <@$list or die "index out of bounds\n";
+        return $list->[$index];
+    },
+    first=>sub {
+        my $list=shift;
+        return 'nil' if ref $list ne 'MalList' and ref $list ne 'MalVector';
+        return 'nil' unless @$list;
+        return $list->[0];
+    },
+    rest=>sub {
+        my $list=shift;
+        my @rest;
+        (undef, @rest)=@$list if ref $list eq 'MalList' or ref $list eq 'MalVector';
+        return bless \@rest, 'MalList';
+    },
 );
 our @ns=(
     '(def! not (fn* (a) (if a false true)))',
-    '(def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) "\nnil)")))))'
-
+    '(def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) "\nnil)")))))',
+    "(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))",
 );
 
 
