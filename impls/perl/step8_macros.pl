@@ -182,7 +182,12 @@ my $term=Term::ReadLine->new('mal');
 my $prompt='user> ';
 our $OUT=$term->OUT || \*STDOUT;
 
-rep($_) for @Core::ns;
+rep($_) for (
+    '(def! not (fn* (a) (if a false true)))',
+    '(def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) "\nnil)")))))',
+    "(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))",
+);
+
 my $filename=shift @ARGV;
 $repl_env->set('*ARGV*',
     bless [

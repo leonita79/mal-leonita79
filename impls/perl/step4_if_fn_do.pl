@@ -107,7 +107,11 @@ sub eval_fn_star {
     };
 }
 
-rep($_) for @Core::ns;
+rep($_) for (
+    '(def! not (fn* (a) (if a false true)))',
+    '(def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) "\nnil)")))))',
+);
+
 my $line;
 my $term=Term::ReadLine->new('mal');
 my $prompt='user> ';

@@ -154,7 +154,10 @@ my $term=Term::ReadLine->new('mal');
 my $prompt='user> ';
 our $OUT=$term->OUT || \*STDOUT;
 
-rep($_) for @Core::ns;
+rep($_) for (
+    '(def! not (fn* (a) (if a false true)))',
+    '(def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) "\nnil)")))))',
+);
 my $filename=shift @ARGV;
 $repl_env->set('*ARGV*',
     bless [
