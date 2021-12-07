@@ -1,4 +1,6 @@
 package Reader;
+use strict;
+use warnings;
 use Scalar::Util;
 
 sub next_token {
@@ -104,7 +106,7 @@ sub read_meta {
 sub read_atom {
     my $token=shift;
     Scalar::Util::looks_like_number($token) and return $token;
-    $token =~ /^true|false|nil$/ and return $token;
+    $token =~ /^(true|false|nil)$/ and return $token;
     $token =~ /"(?:\\.|[^\\"])*"/ and return wrap_string($token); 
     $token =~ /^"/ and die "unbalanced \"\n";
     $token =~ /^:/ or return bless \$token, 'MalSymbol';

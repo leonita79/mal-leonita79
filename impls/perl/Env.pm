@@ -1,4 +1,6 @@
 package Env;
+use strict;
+use warnings;
 
 our $parent="\0";
 
@@ -59,7 +61,7 @@ sub get {
     my ($self, $key)=@_;
     my $env=$self->find($key);
     return $env->{$key} if $env;
-    die "$key not found\n";
+    die "'$key' not found\n";
 }
 
 1;

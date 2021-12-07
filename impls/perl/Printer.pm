@@ -1,4 +1,6 @@
 package Printer;
+use strict;
+use warnings;
 
 sub pr_str {
     my ($val, $print_readably)=@_;
@@ -34,10 +36,11 @@ sub thaw_key {
 }
 
 sub unwrap_string {
-    my $string=shift;
-    $$string =~ s/\\/\\\\/g;
-    $$string =~ s/\n/\\n/g;
-    $$string =~ s/"/\\"/g;
-    return qq{"$$string"};
+    my $string=${shift @_};
+    $string =~ s/\\/\\\\/g;
+    $string =~ s/\n/\\n/g;
+    $string =~ s/"/\\"/g;
+    return qq{"$string"};
 }
-l;
+
+1;

@@ -1,5 +1,9 @@
 package Core;
+use strict;
+use warnings;
 use Scalar::Util;
+use Reader;
+use Printer;
 
 sub mal_bool { return shift ? 'true' : 'false'; }
 sub mal_equal {
@@ -34,7 +38,6 @@ our %ns=(
     'pr-str'=>sub {
         my $str=join ' ', map { Printer::pr_str($_) } @_;
         return bless \$str, 'MalString';
-        return Reader::wrap_string('"' . join(" ", @str) . '"');
     },
     str=>sub {
         my $str=join '', map { Printer::pr_str($_, 0) } @_;
@@ -66,22 +69,22 @@ our %ns=(
     '='=>sub { return mal_bool(mal_equal(@_)); },
     '<'=>sub { 
         my ($first, $second)=@_;
-        ref(first) || ref($second) and die "can't compare non-number\n";
+        ref($first) || ref($second) and die "can't compare non-number\n";
         mal_bool($first<$second);
     },
     '>'=>sub { 
         my ($first, $second)=@_;
-        ref(first) || ref($second) and die "can't compare non-number\n";
+        ref($first) || ref($second) and die "can't compare non-number\n";
         mal_bool($first>$second);
     },
     '<='=>sub { 
         my ($first, $second)=@_;
-        ref(first) || ref($second) and die "can't compare non-number\n";
+        ref($first) || ref($second) and die "can't compare non-number\n";
         mal_bool($first<=$second);
     },
     '>='=>sub { 
         my ($first, $second)=@_;
-        ref(first) || ref($second) and die "can't compare non-number\n";
+        ref($first) || ref($second) and die "can't compare non-number\n";
         mal_bool($first>=$second);
     },
     'read-string'=>sub {
@@ -150,6 +153,97 @@ our %ns=(
         my @rest;
         (undef, @rest)=@$list if ref $list eq 'MalList' or ref $list eq 'MalVector';
         return bless \@rest, 'MalList';
+    },
+    throw=>sub {
+        my $exception=shift;
+        $exception="$exception\n" unless ref $exception;
+        die $exception;
+    },
+    apply=>sub {
+        my $fn=shift;
+        ref $fn eq 'CODE' or die "bad apply\n";
+        if(@_) {
+            my $list=pop;
+            ref $list eq 'MalList' or ref $list eq 'MalVector' or die "bad apply\n";
+            push @_, @$list;
+        }
+        goto &$fn;
+    },
+    map=>sub {
+        my ($fn, $list)=@_;
+        ref $fn eq 'CODE' and (ref $list eq 'MalList' or ref $list eq 'MalVector') or die "bad map\n";
+        return bless [ map { $fn->($_) } @$list ], 'MalList';
+    },
+    'nil?'=>sub { mal_bool(shift eq 'nil') },
+    'true?'=>sub { mal_bool(shift eq 'true') },
+    'false?'=>sub { mal_bool(shift eq 'false') },
+    'symbol?'=>sub { mal_bool(ref shift eq 'MalSymbol') },
+    'vector?'=>sub { mal_bool(ref shift eq 'MalVector') },
+    'keyword?'=>sub { mal_bool(ref shift eq 'MalKeyword') },
+    'sequential?'=>sub { my $val=shift; mal_bool(ref $val eq 'MalList' or ref $val eq 'MalVector') },
+    'map?'=>sub { mal_bool(ref shift eq 'MalHash') },
+    symbol=>sub {
+        my $symbol=shift;
+        ref $symbol eq 'MalString' or die "Bad symbol\n";
+        my $name=$$symbol;
+        return bless \$name, 'MalSymbol';
+    },
+    keyword=>sub {
+        my $symbol=shift;
+        return $symbol if ref $symbol eq 'MalKeyword';
+        ref $symbol eq 'MalString' or die "Bad keyword\n";
+        my $name="\0:$$symbol";
+        return bless \$name, 'MalKeyword';
+    },
+    vector=>sub { bless [@_], 'MalVector' },
+    'hash-map'=>sub {
+        @_ % 2 and die "bad hash-map\n";
+        my $hash=bless { }, 'MalHash';
+        while(@_) {
+            my $key=Reader::freeze_key(shift);
+            $hash->{$key}=shift;
+        }
+        return $hash;
+    },
+    assoc=>sub {
+        my $old_hash=shift;
+        ref $old_hash ne 'MalHash' || @_ % 2 and die "bad assoc\n";
+        my $hash = bless { %$old_hash }, 'MalHash';
+        while(@_) {
+            my $key=Reader::freeze_key(shift);
+            $hash->{$key}=shift;
+        }
+        return $hash;
+    },
+    dissoc=>sub {
+        my $old_hash=shift;
+        ref $old_hash ne 'MalHash' and die "bad dissoc\n";
+        my $new_hash=bless { %$old_hash }, 'MalHash';
+        delete $new_hash->{Reader::freeze_key($_)} for @_;
+        return $new_hash;
+    },
+    get=>sub {
+        my ($hash, $key)=@_;
+        return 'nil' if $hash eq 'nil';
+        ref $hash eq 'MalHash' or die "bad get\n";
+        return $hash->{Reader::freeze_key($key)} // 'nil';
+    },
+    'contains?'=>sub {
+        my ($hash, $key)=@_;
+        return 'false' if $hash eq 'nil';
+        ref $hash eq 'MalHash' or die "bad get\n";
+        ref $hash eq 'MalHash' or die "bad contains?\n";
+        return mal_bool(exists $hash->{Reader::freeze_key($key)});
+    },
+    keys=>sub {
+        my $hash=shift;
+        ref $hash eq 'MalHash' or die "bad keys\n";
+        return bless [ map { Printer::thaw_key($_) } keys %$hash ], 'MalList';
+    },
+    vals=>sub {
+        my $hash=shift;
+        ref $hash eq 'MalHash' or die "bad vals\n";
+        return bless [ values %$hash ], 'MalList';
     },
 );
 
