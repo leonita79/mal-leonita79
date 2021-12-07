@@ -2,8 +2,11 @@ package Core;
 use strict;
 use warnings;
 use Scalar::Util;
+use Time::HiRes qw(time);
 use Reader;
 use Printer;
+
+our %metadata;
 
 sub mal_bool { return shift ? 'true' : 'false'; }
 sub mal_equal {
@@ -31,6 +34,7 @@ sub mal_equal {
     }
 }
 our %ns=(
+    '*host-language*'=>do { my $host='perl'; bless \$host, "MalString"; },
     '+'=>sub { my $val=0; $val+=shift while @_; return $val; },
     '-'=>sub { my $val=shift; $val-=shift while @_; return $val; },
     '*'=>sub { my $val=1; $val*=shift while @_; return $val; },
@@ -45,12 +49,12 @@ our %ns=(
     },
     prn=>sub {
         my @str=map { Printer::pr_str($_) } @_;
-        print $::OUT join(" ", @str), "\n";
+        print join(" ", @str), "\n";
         return 'nil'
     },
     println=>sub {
         my @str=map { Printer::pr_str($_, 0) } @_;
-        print $::OUT join(" ", @str), "\n";
+        print join(" ", @str), "\n";
         return 'nil'
     },
     list=>sub { bless [@_], 'MalList' },
@@ -180,6 +184,10 @@ our %ns=(
     'symbol?'=>sub { mal_bool(ref shift eq 'MalSymbol') },
     'vector?'=>sub { mal_bool(ref shift eq 'MalVector') },
     'keyword?'=>sub { mal_bool(ref shift eq 'MalKeyword') },
+    'string?'=>sub { mal_bool(ref shift eq 'MalString') },
+    'number?'=>sub { my $val=shift; mal_bool(!ref $val && Scalar::Util::looks_like_number($val)) },
+    'fn?'=>sub { mal_bool(ref shift eq 'CODE') },
+    'macro?'=>sub { mal_bool(ref shift eq 'MalMacro') },
     'sequential?'=>sub { my $val=shift; mal_bool(ref $val eq 'MalList' or ref $val eq 'MalVector') },
     'map?'=>sub { mal_bool(ref shift eq 'MalHash') },
     symbol=>sub {
@@ -245,6 +253,53 @@ our %ns=(
         ref $hash eq 'MalHash' or die "bad vals\n";
         return bless [ values %$hash ], 'MalList';
     },
+    'time-ms'=>sub { int(time()*1000) },
+    seq=>sub {
+        my $seq=shift;
+        if($seq eq 'nil') {
+            return 'nil';
+        } elsif(ref $seq eq 'MalList') {
+            return @$seq ? $seq : 'nil';
+        } elsif(ref $seq eq 'MalVector') {
+            return @$seq ? bless [@$seq], 'MalList' : 'nil';
+        } elsif(ref $seq eq 'MalString') {
+            my @string=map { my $ch=$_; bless \$ch, 'MalString' }  split //, $$seq;
+            return @string ? bless [@string], 'MalList' : 'nil';
+        }
+        die "bad seq\n";
+    },
+    conj=>sub {
+        my $collection=shift;
+        ref $collection eq 'MalList' and return bless [reverse(@_), @$collection], 'MalList';
+        ref $collection eq 'MalVector' and return bless [@$collection, @_], 'MalVector';
+        die "bad conj\n"; 
+    },
+    meta=>sub {
+        my $val=shift;
+        my $addr=Scalar::Util::refaddr($val) // 'undefined';
+        return $metadata{$addr}//'nil';
+    },
+    'with-meta'=>sub {
+        my ($val, $meta)=@_;
+        my $data=$val;
+        if(ref $val eq 'MalVector' or ref $val eq 'MalList') {
+            $data=bless [@$val], ref $val;
+            $metadata{Scalar::Util::refaddr($data)}=$meta;
+        } elsif(ref $data eq 'MalHash') {
+            $data=bless { %$val }, 'MalHash';
+            $metadata{Scalar::Util::refaddr($data)}=$meta;
+        } elsif(ref $val eq 'CODE') {
+            $data=sub { goto &$val };
+            $metadata{Scalar::Util::refaddr($data)}=$meta;
+        }
+        return $data;
+    },
+    readline=>sub {
+        my $prompt=shift;
+        $prompt=(ref $prompt eq 'MalString') ? $$prompt : '> ';
+        my $line=$::term->readline($prompt);
+        return defined $line ? bless \$line, 'MalString' : 'nil';
+    }
 );
 
 
