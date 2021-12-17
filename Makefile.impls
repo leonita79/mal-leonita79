@@ -34,7 +34,7 @@ wasm_MODE = wasmtime
 # Implementation specific settings
 #
 
-IMPLS = perl mal
+IMPLS = c mal perl
 
 #IMPLS = ada ada.2 awk bash basic bbc-basic c c.2 chuck clojure coffee common-lisp cpp crystal cs d dart \
 	elisp elixir elm erlang es6 factor fantom fennel forth fsharp go groovy gnu-smalltalk \
