@@ -30,4 +30,5 @@ int main() {
         free(input);
         clear_stack();
     }
+    free_stack();
 }

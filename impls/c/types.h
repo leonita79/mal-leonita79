@@ -21,6 +21,7 @@ typedef struct MalValue {
 
 void clear_stack();
 void grow_stack();
+void free_stack();
 void* stack_alloc(size_t size);
 void* stack_realloc(void* ptr, size_t size);
 
