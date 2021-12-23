@@ -3,7 +3,7 @@
 #include <string.h>
 
 char* stack=NULL;
-size_t stack_last=NULL;
+size_t stack_last=0;
 size_t stack_size=0;
 size_t stack_capacity=1024;
 
@@ -44,8 +44,8 @@ void mal_free(MalValue value) {
     return;
 }
 
-MalValue make_list(MalValue* list, uint32_t size) {
-    MalValue value=(MalValue){.type=MAL_TYPE_LIST, .size=size};
+MalValue make_list(uint8_t type, MalValue* list, uint32_t size) {
+    MalValue value=(MalValue){.type=type, .size=size};
     value.as_list=list;
     return value;
 }

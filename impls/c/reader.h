@@ -15,7 +15,7 @@ size_t reader_size(Reader* reader);
 char* reader_next(Reader* reader);
 
 MalValue read_form(Reader* reader);
-MalValue read_list(Reader* reader);
+MalValue read_list(Reader* reader, uint8_t type, char delim);
 MalValue read_atom(Reader* reader);
 
 bool is_space_or_comma(char ch);

@@ -7,6 +7,8 @@
 
 enum {
     MAL_TYPE_LIST,
+    MAL_TYPE_VECTOR,
+    MAL_TYPE_MAP,
     MAL_TYPE_SYMBOL
 };
 
@@ -28,7 +30,7 @@ void* stack_realloc(void* ptr, size_t size);
 MalValue mal_copy(MalValue value);
 void mal_free(MalValue value);
 
-MalValue make_list(MalValue* data, uint32_t size);
+MalValue make_list(uint8_t type, MalValue* data, uint32_t size);
 MalValue make_symbol(char* name, uint32_t size);
 #endif //TYPES_H
 

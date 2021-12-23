@@ -12,20 +12,29 @@ char* pr_str(MalValue value, bool print_readably) {
 }
 void print_value(StringBuffer* buffer, MalValue value, bool print_readably) {
     switch(value.type) {
-        case MAL_TYPE_LIST: {
-            sb_print_char(buffer, '(');
-            for(int i=0; i<value.size; i++) {
-                if(i>0)
-                    sb_print_char(buffer, ' ');
-                print_value(buffer, value.as_list[i], print_readably);    
-            }
-            sb_print_char(buffer, ')');
+        case MAL_TYPE_LIST: 
+            print_list(buffer, '(', value, ')', print_readably);
             break;
-        }
+        case MAL_TYPE_VECTOR:
+            print_list(buffer, '[', value, ']', print_readably);
+            break;
+        case MAL_TYPE_MAP:
+            print_list(buffer, '{', value, '}', print_readably);
+            break;
         case MAL_TYPE_SYMBOL:
             sb_print_string(buffer, value.as_str, value.size);
             break;
     }
+}
+
+void print_list(StringBuffer* buffer, char open, MalValue value, char close, bool print_readably) {
+    sb_print_char(buffer, open);
+    for(int i=0; i<value.size; i++) {
+        if(i>0)
+            sb_print_char(buffer, ' ');
+        print_value(buffer, value.as_list[i], print_readably);    
+    }
+    sb_print_char(buffer, close);
 }
 
 void sb_print_char(StringBuffer* buffer, char ch) {

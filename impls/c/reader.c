@@ -48,18 +48,22 @@ char* reader_next(Reader* reader) {
 MalValue read_form(Reader* reader) {
     switch(reader_peek(reader)[0]) {
         case '(':
-            reader_next(reader);
-            return read_list(reader);
+            return read_list(reader, MAL_TYPE_LIST, ')');
+        case '[':
+            return read_list(reader, MAL_TYPE_VECTOR, ']');
+        case '{':
+            return read_list(reader, MAL_TYPE_MAP, '}');
         default:
             return read_atom(reader);
     }
 }
-MalValue read_list(Reader* reader) {
+MalValue read_list(Reader* reader, uint8_t type, char delim) {
     uint32_t list_size=0;
     uint32_t list_capacity=4;
     MalValue* list=stack_alloc(list_capacity*sizeof(MalValue));
 
-    while(reader_peek(reader)[0] && reader_peek(reader)[0]!=')') {
+    reader_next(reader);
+    while(reader_peek(reader)[0] && reader_peek(reader)[0]!=delim) {
         if(list_capacity==list_size) {
             list_capacity*=2;
             list=stack_realloc(list, list_capacity*sizeof(MalValue));
@@ -67,7 +71,7 @@ MalValue read_list(Reader* reader) {
         list[list_size++]=read_form(reader);
     }
     reader_next(reader);
-    return make_list(list, list_size);
+    return make_list(type, list, list_size);
 }
 MalValue read_atom(Reader* reader) {
     MalValue value=make_symbol(reader_peek(reader), reader_size(reader));
