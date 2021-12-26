@@ -9,7 +9,8 @@ enum {
     MAL_TYPE_LIST,
     MAL_TYPE_VECTOR,
     MAL_TYPE_MAP,
-    MAL_TYPE_SYMBOL
+    MAL_TYPE_SYMBOL,
+    MAL_TYPE_ERRMSG
 };
 
 typedef struct MalValue {
@@ -32,5 +33,6 @@ void mal_free(MalValue value);
 
 MalValue make_list(uint8_t type, MalValue* data, uint32_t size);
 MalValue make_symbol(char* name, uint32_t size);
+MalValue make_errmsg(char* msg);
 #endif //TYPES_H
 

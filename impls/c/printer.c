@@ -3,6 +3,8 @@
 
 char* pr_str(MalValue value, bool print_readably) {
     StringBuffer buffer={0};
+    if(value.type==MAL_TYPE_ERRMSG && !value.as_str)
+        return NULL;
     buffer.capacity=32;
     buffer.ptr=stack_alloc(buffer.capacity);
 
@@ -22,6 +24,7 @@ void print_value(StringBuffer* buffer, MalValue value, bool print_readably) {
             print_list(buffer, '{', value, '}', print_readably);
             break;
         case MAL_TYPE_SYMBOL:
+        case MAL_TYPE_ERRMSG:
             sb_print_string(buffer, value.as_str, value.size);
             break;
     }
@@ -38,16 +41,20 @@ void print_list(StringBuffer* buffer, char open, MalValue value, char close, boo
 }
 
 void sb_print_char(StringBuffer* buffer, char ch) {
+    if(!buffer->ptr) return;
     if(buffer->size==buffer->capacity) {
         buffer->capacity*=2;
         buffer->ptr=stack_realloc(buffer->ptr, buffer->capacity);
+        if(!buffer->ptr) return;
     }
     buffer->ptr[buffer->size++]=ch;
 }
 void sb_print_string(StringBuffer* buffer, char* string, size_t size) {
+    if(!buffer->ptr) return;
     if(buffer->size+size>buffer->capacity) {
         buffer->capacity*=2;
         buffer->ptr=stack_realloc(buffer->ptr, buffer->capacity);
+        if(!buffer->ptr) return;
     }
     memcpy(buffer->ptr+buffer->size, string, size);
     buffer->size+=size;

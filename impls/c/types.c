@@ -54,4 +54,9 @@ MalValue make_symbol(char* name, uint32_t size) {
     value.as_str=name;
     return value;
 }
+MalValue make_errmsg(char* msg) {
+    MalValue value=(MalValue){.type=MAL_TYPE_ERRMSG, .size=msg ? strlen(msg) : 0};
+    value.as_str=msg;
+    return value;
+}
 

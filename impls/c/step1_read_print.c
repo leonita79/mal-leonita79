@@ -25,8 +25,15 @@ int main() {
     while(input = linenoise("user> ")) {
         char* str=input;
         while(is_space_or_comma(*str)) str++;
-        if(*str) linenoiseHistoryAdd(str);
-        printf("%s\n", rep(str));
+        if(*str) {
+            char* output=rep(str);
+            while(!output) {
+                grow_stack();
+                output=rep(str);
+            }
+            linenoiseHistoryAdd(str);
+            printf("%s\n", rep(str));
+        }
         free(input);
         clear_stack();
     }

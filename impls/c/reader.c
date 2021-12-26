@@ -34,6 +34,8 @@ char* reader_next(Reader* reader) {
                     reader->next++;
                 reader->next++;
             }
+            if(!reader->next[0])
+                reader->token=NULL;
             break;
         case ';':     
             while(reader->next[0] && reader->next[0] != '\n') {
@@ -46,6 +48,8 @@ char* reader_next(Reader* reader) {
     return reader->token;    
 }
 MalValue read_form(Reader* reader) {
+    if(!reader_peek(reader))
+        return make_errmsg("Unexpected end of input");
     switch(reader_peek(reader)[0]) {
         case '(':
             return read_list(reader, MAL_TYPE_LIST, ')');
@@ -61,15 +65,26 @@ MalValue read_list(Reader* reader, uint8_t type, char delim) {
     uint32_t list_size=0;
     uint32_t list_capacity=4;
     MalValue* list=stack_alloc(list_capacity*sizeof(MalValue));
+    if(!list)
+        return make_errmsg(NULL);
 
     reader_next(reader);
-    while(reader_peek(reader)[0] && reader_peek(reader)[0]!=delim) {
+    while(reader_peek(reader) && reader_peek(reader)[0] && reader_peek(reader)[0]!=delim) {
         if(list_capacity==list_size) {
             list_capacity*=2;
             list=stack_realloc(list, list_capacity*sizeof(MalValue));
+            if(!list)
+                return make_errmsg(NULL);
         }
-        list[list_size++]=read_form(reader);
+        MalValue value=read_form(reader);
+        switch(value.type) {
+            case MAL_TYPE_ERRMSG:
+                return value;
+        }
+        list[list_size++]=value;
     }
+    if(!reader_peek(reader) || !reader_peek(reader)[0])
+        return make_errmsg("Unexpected end of input");
     reader_next(reader);
     return make_list(type, list, list_size);
 }
