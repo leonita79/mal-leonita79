@@ -6,6 +6,7 @@
 typedef struct {
     char* token;
     char* next;
+    MalValue error;
 } Reader;
 
 MalValue read_str(char* str);
