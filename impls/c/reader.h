@@ -19,6 +19,9 @@ MalValue read_form(Reader* reader);
 MalValue read_list(Reader* reader, uint8_t type, char delim);
 MalValue read_atom(Reader* reader);
 
+MalValue read_quote(Reader* reader, char* quote);
+MalValue read_with_meta(Reader* reader);
+
 bool is_space_or_comma(char ch);
 bool is_special(char ch);
 

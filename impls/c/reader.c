@@ -1,4 +1,5 @@
 #include "reader.h"
+#include <string.h>
 
 MalValue read_str(char* str) {
     Reader reader=(Reader){.next=str, .error={0}};
@@ -60,6 +61,16 @@ MalValue read_form(Reader* reader) {
             return read_list(reader, MAL_TYPE_VECTOR, ']');
         case '{':
             return read_list(reader, MAL_TYPE_MAP, '}');
+        case '\'':
+            return read_quote(reader, "quote");
+        case '`':
+            return read_quote(reader, "quasiquote");
+        case '~':
+            return read_quote(reader, reader_peek(reader)[1]=='@' ? "splice-unquote" : "unquote");
+        case '@':
+            return read_quote(reader, "deref");
+        case '^':
+            return read_with_meta(reader);
         case ';':
             return make_symbol("NIL", 3); //proper nil not implemented
         default:
@@ -100,6 +111,29 @@ MalValue read_atom(Reader* reader) {
     return value;
 }
 
+MalValue read_quote(Reader* reader, char* quote) {
+    MalValue* list=stack_alloc(sizeof(MalValue)*2);
+    if(!list)
+        return make_errmsg(NULL);
+    reader_next(reader);    
+    list[0]=make_symbol(quote, strlen(quote));
+    list[1]=read_form(reader);
+    if(reader->error.type)
+        return reader->error;
+    return make_list(MAL_TYPE_LIST, list, 2);
+}
+MalValue read_with_meta(Reader* reader) {
+    MalValue* list=stack_alloc(sizeof(MalValue)*3);
+    if(!list)
+        return make_errmsg(NULL);
+    reader_next(reader);    
+    list[0]=make_symbol("with-meta", 9);
+    list[2]=read_form(reader);
+    list[1]=read_form(reader);
+    if(reader->error.type)
+        return reader->error;
+    return make_list(MAL_TYPE_LIST, list, 3);
+}
 
 bool is_space_or_comma(char ch) {    
     switch(ch) {
