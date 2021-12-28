@@ -6,10 +6,15 @@
 #include <stdbool.h>
 
 enum {
+    MAL_TYPE_NIL,
+    MAL_TYPE_FALSE,
+    MAL_TYPE_TRUE,
     MAL_TYPE_LIST,
     MAL_TYPE_VECTOR,
     MAL_TYPE_MAP,
     MAL_TYPE_SYMBOL,
+    MAL_TYPE_STRING,
+    MAL_TYPE_KEYWORD,
     MAL_TYPE_ERRMSG
 };
 
@@ -32,7 +37,7 @@ MalValue mal_copy(MalValue value);
 void mal_free(MalValue value);
 
 MalValue make_list(uint8_t type, MalValue* data, uint32_t size);
-MalValue make_symbol(char* name, uint32_t size);
+MalValue make_const_atomic(uint8_t type, char* string, uint32_t size);
 MalValue make_errmsg(char* msg);
 #endif //TYPES_H
 

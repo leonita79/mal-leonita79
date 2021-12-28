@@ -23,7 +23,12 @@ void print_value(StringBuffer* buffer, MalValue value, bool print_readably) {
         case MAL_TYPE_MAP:
             print_list(buffer, '{', value, '}', print_readably);
             break;
+        case MAL_TYPE_NIL:
+        case MAL_TYPE_FALSE:
+        case MAL_TYPE_TRUE:
         case MAL_TYPE_SYMBOL:
+        case MAL_TYPE_STRING:
+        case MAL_TYPE_KEYWORD:
         case MAL_TYPE_ERRMSG:
             sb_print_string(buffer, value.as_str, value.size);
             break;

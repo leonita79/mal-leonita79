@@ -72,7 +72,7 @@ MalValue read_form(Reader* reader) {
         case '^':
             return read_with_meta(reader);
         case ';':
-            return make_symbol("NIL", 3); //proper nil not implemented
+            return make_const_atomic(MAL_TYPE_NIL, "nil", 3);
         default:
             return read_atom(reader);
     }
@@ -104,7 +104,20 @@ MalValue read_list(Reader* reader, uint8_t type, char delim) {
     return make_list(type, list, list_size);
 }
 MalValue read_atom(Reader* reader) {
-    MalValue value=make_symbol(reader_peek(reader), reader_size(reader));
+    MalValue value;
+    if(reader_peek(reader)[0]=='\"') {
+        value=make_const_atomic(MAL_TYPE_STRING, reader_peek(reader), reader_size(reader));
+    } else if(reader_peek(reader)[0]==':') {
+        value=make_const_atomic(MAL_TYPE_KEYWORD, reader_peek(reader), reader_size(reader));
+    } else if(strncmp("nil", reader_peek(reader), reader_size(reader))==0) {
+        value=make_const_atomic(MAL_TYPE_NIL, reader_peek(reader), reader_size(reader));
+    } else if(strncmp("false", reader_peek(reader), reader_size(reader))==0) {
+        value=make_const_atomic(MAL_TYPE_FALSE, reader_peek(reader), reader_size(reader));
+    } else if(strncmp("true", reader_peek(reader), reader_size(reader))==0) {
+        value=make_const_atomic(MAL_TYPE_TRUE, reader_peek(reader), reader_size(reader));
+    } else {
+        value=make_const_atomic(MAL_TYPE_SYMBOL, reader_peek(reader), reader_size(reader));
+    }
     if(reader->error.type)
         return reader->error;
     reader_next(reader);
@@ -116,7 +129,7 @@ MalValue read_quote(Reader* reader, char* quote) {
     if(!list)
         return make_errmsg(NULL);
     reader_next(reader);    
-    list[0]=make_symbol(quote, strlen(quote));
+    list[0]=make_const_atomic(MAL_TYPE_SYMBOL, quote, strlen(quote));
     list[1]=read_form(reader);
     if(reader->error.type)
         return reader->error;
@@ -127,7 +140,7 @@ MalValue read_with_meta(Reader* reader) {
     if(!list)
         return make_errmsg(NULL);
     reader_next(reader);    
-    list[0]=make_symbol("with-meta", 9);
+    list[0]=make_const_atomic(MAL_TYPE_SYMBOL, "with-meta", 9);
     list[2]=read_form(reader);
     list[1]=read_form(reader);
     if(reader->error.type)

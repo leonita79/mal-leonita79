@@ -49,9 +49,9 @@ MalValue make_list(uint8_t type, MalValue* list, uint32_t size) {
     value.as_list=list;
     return value;
 }
-MalValue make_symbol(char* name, uint32_t size) {
-    MalValue value=(MalValue){.type=MAL_TYPE_SYMBOL, .size=size};
-    value.as_str=name;
+MalValue make_const_atomic(uint8_t type, char* string, uint32_t size) {
+    MalValue value=(MalValue){.type=type, .size=size};
+    value.as_str=string;
     return value;
 }
 MalValue make_errmsg(char* msg) {
