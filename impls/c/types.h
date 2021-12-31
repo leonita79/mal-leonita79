@@ -20,6 +20,7 @@ enum {
 
 typedef struct MalValue {
     uint8_t type;
+    uint8_t is_gc;
     uint32_t size;
     union {
         char* as_str;
@@ -27,14 +28,13 @@ typedef struct MalValue {
     };
 } MalValue;
 
-void clear_stack();
-void grow_stack();
-void free_stack();
-void* stack_alloc(size_t size);
-void* stack_realloc(void* ptr, size_t size);
+void* gc_alloc(size_t size);
+void* gc_realloc(void* ptr, size_t size);
+void gc_mark(MalValue value);
+void gc_collect(bool full);
+void gc_destroy();
 
 MalValue mal_copy(MalValue value);
-void mal_free(MalValue value);
 
 MalValue make_list(uint8_t type, MalValue* data, uint32_t size);
 MalValue make_const_atomic(uint8_t type, char* string, uint32_t size);

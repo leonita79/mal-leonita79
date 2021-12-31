@@ -6,7 +6,7 @@ char* pr_str(MalValue value, bool print_readably) {
     if(value.type==MAL_TYPE_ERRMSG && !value.as_str)
         return NULL;
     buffer.capacity=32;
-    buffer.ptr=stack_alloc(buffer.capacity);
+    buffer.ptr=gc_alloc(buffer.capacity);
 
     print_value(&buffer, value, print_readably);
     sb_print_char(&buffer, '\0');
@@ -46,20 +46,16 @@ void print_list(StringBuffer* buffer, char open, MalValue value, char close, boo
 }
 
 void sb_print_char(StringBuffer* buffer, char ch) {
-    if(!buffer->ptr) return;
     if(buffer->size==buffer->capacity) {
         buffer->capacity*=2;
-        buffer->ptr=stack_realloc(buffer->ptr, buffer->capacity);
-        if(!buffer->ptr) return;
+        buffer->ptr=gc_realloc(buffer->ptr, buffer->capacity);
     }
     buffer->ptr[buffer->size++]=ch;
 }
 void sb_print_string(StringBuffer* buffer, char* string, size_t size) {
-    if(!buffer->ptr) return;
     if(buffer->size+size>buffer->capacity) {
         buffer->capacity*=2;
-        buffer->ptr=stack_realloc(buffer->ptr, buffer->capacity);
-        if(!buffer->ptr) return;
+        buffer->ptr=gc_realloc(buffer->ptr, buffer->capacity);
     }
     memcpy(buffer->ptr+buffer->size, string, size);
     buffer->size+=size;

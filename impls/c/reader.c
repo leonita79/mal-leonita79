@@ -80,19 +80,15 @@ MalValue read_form(Reader* reader) {
 MalValue read_list(Reader* reader, uint8_t type, char delim) {
     uint32_t list_size=0;
     uint32_t list_capacity=4;
-    MalValue* list=stack_alloc(list_capacity*sizeof(MalValue));
+    MalValue* list=gc_alloc(list_capacity*sizeof(MalValue));
     if(reader->error.type)
         return reader->error;
-    if(!list)
-        return make_errmsg(NULL);
 
     reader_next(reader);
     while(reader_peek(reader)[0] && reader_peek(reader)[0]!=delim) {
         if(list_capacity==list_size) {
             list_capacity*=2;
-            list=stack_realloc(list, list_capacity*sizeof(MalValue));
-            if(!list)
-                return make_errmsg(NULL);
+            list=gc_realloc(list, list_capacity*sizeof(MalValue));
         }
         list[list_size++]=read_form(reader);
         if(reader->error.type)
@@ -101,7 +97,7 @@ MalValue read_list(Reader* reader, uint8_t type, char delim) {
     if(!reader_peek(reader)[0])
         return reader->error=make_errmsg("Unexpected end of input");
     reader_next(reader);
-    return make_list(type, list, list_size);
+    return make_list(type, gc_realloc(list, list_size*sizeof(MalValue)), list_size);
 }
 MalValue read_atom(Reader* reader) {
     MalValue value;
@@ -125,9 +121,7 @@ MalValue read_atom(Reader* reader) {
 }
 
 MalValue read_quote(Reader* reader, char* quote) {
-    MalValue* list=stack_alloc(sizeof(MalValue)*2);
-    if(!list)
-        return make_errmsg(NULL);
+    MalValue* list=gc_alloc(sizeof(MalValue)*2);
     reader_next(reader);    
     list[0]=make_const_atomic(MAL_TYPE_SYMBOL, quote, strlen(quote));
     list[1]=read_form(reader);
@@ -136,9 +130,7 @@ MalValue read_quote(Reader* reader, char* quote) {
     return make_list(MAL_TYPE_LIST, list, 2);
 }
 MalValue read_with_meta(Reader* reader) {
-    MalValue* list=stack_alloc(sizeof(MalValue)*3);
-    if(!list)
-        return make_errmsg(NULL);
+    MalValue* list=gc_alloc(sizeof(MalValue)*3);
     reader_next(reader);    
     list[0]=make_const_atomic(MAL_TYPE_SYMBOL, "with-meta", 9);
     list[2]=read_form(reader);
