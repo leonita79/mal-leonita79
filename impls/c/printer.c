@@ -1,5 +1,6 @@
 #include "printer.h"
 #include <string.h>
+#include <stdio.h>
 
 char* pr_str(MalValue value, bool print_readably) {
     StringBuffer buffer={0};
@@ -23,6 +24,12 @@ void print_value(StringBuffer* buffer, MalValue value, bool print_readably) {
         case MAL_TYPE_MAP:
             print_list(buffer, '{', value, '}', print_readably);
             break;
+        case MAL_TYPE_NUMBER: {
+            int size=snprintf(NULL, 0, "%li", value.as_int);
+            char* temp=sb_print_string(buffer, NULL, size);
+            snprintf(temp, size+1, "%li", value.as_int);
+            break;
+        }
         case MAL_TYPE_NIL:
         case MAL_TYPE_FALSE:
         case MAL_TYPE_TRUE:
@@ -52,11 +59,13 @@ void sb_print_char(StringBuffer* buffer, char ch) {
     }
     buffer->ptr[buffer->size++]=ch;
 }
-void sb_print_string(StringBuffer* buffer, char* string, size_t size) {
-    if(buffer->size+size>buffer->capacity) {
+char* sb_print_string(StringBuffer* buffer, char* string, size_t size) {
+    if(buffer->size+size+1>buffer->capacity) {
         buffer->capacity*=2;
         buffer->ptr=gc_realloc(buffer->ptr, buffer->capacity);
     }
-    memcpy(buffer->ptr+buffer->size, string, size);
+    if(string)
+        memcpy(buffer->ptr+buffer->size, string, size);
     buffer->size+=size;
+    return buffer->ptr+buffer->size-size;
 }

@@ -1,5 +1,6 @@
 #include "reader.h"
 #include <string.h>
+#include <stdlib.h>
 
 MalValue read_str(char* str) {
     Reader reader=(Reader){.next=str, .error={0}};
@@ -112,7 +113,13 @@ MalValue read_atom(Reader* reader) {
     } else if(strncmp("true", reader_peek(reader), reader_size(reader))==0) {
         value=make_const_atomic(MAL_TYPE_TRUE, reader_peek(reader), reader_size(reader));
     } else {
-        value=make_const_atomic(MAL_TYPE_SYMBOL, reader_peek(reader), reader_size(reader));
+        char* tailptr=NULL;
+        long number=strtol(reader_peek(reader), &tailptr, 10); 
+        if(tailptr!=reader_peek(reader) && tailptr==reader_peek(reader)+reader_size(reader)) {
+            value=make_number(number);
+        } else {
+            value=make_const_atomic(MAL_TYPE_SYMBOL, reader_peek(reader), reader_size(reader));
+        }
     }
     if(reader->error.type)
         return reader->error;

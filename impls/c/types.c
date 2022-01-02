@@ -99,6 +99,11 @@ MalValue make_const_atomic(uint8_t type, char* string, uint32_t size) {
     value.as_str=string;
     return value;
 }
+MalValue make_number(long data) {
+    MalValue value=(MalValue){.type=MAL_TYPE_NUMBER, .is_gc=0};
+    value.as_int=data;
+    return value;
+}
 MalValue make_errmsg(char* msg) {
     MalValue value=(MalValue){.type=MAL_TYPE_ERRMSG, .is_gc=0, .size=msg ? strlen(msg) : 0};
     value.as_str=msg;

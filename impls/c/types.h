@@ -15,6 +15,7 @@ enum {
     MAL_TYPE_SYMBOL,
     MAL_TYPE_STRING,
     MAL_TYPE_KEYWORD,
+    MAL_TYPE_NUMBER,
     MAL_TYPE_ERRMSG
 };
 
@@ -25,6 +26,7 @@ typedef struct MalValue {
     union {
         char* as_str;
         struct MalValue* as_list;
+        long as_int;
     };
 } MalValue;
 
@@ -38,6 +40,7 @@ MalValue mal_copy(MalValue value);
 
 MalValue make_list(uint8_t type, MalValue* data, uint32_t size);
 MalValue make_const_atomic(uint8_t type, char* string, uint32_t size);
+MalValue make_number(long data);
 MalValue make_errmsg(char* msg);
 #endif //TYPES_H
 
