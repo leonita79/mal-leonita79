@@ -104,6 +104,11 @@ MalValue make_number(long data) {
     value.as_int=data;
     return value;
 }
+MalValue make_native_function(long id) {
+    MalValue value=(MalValue){.type=MAL_TYPE_NATIVE_FUNCTION, .is_gc=0};
+    value.as_int=id;
+    return value;
+};
 MalValue make_errmsg(char* msg) {
     MalValue value=(MalValue){.type=MAL_TYPE_ERRMSG, .is_gc=0, .size=msg ? strlen(msg) : 0};
     value.as_str=msg;

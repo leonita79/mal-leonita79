@@ -16,9 +16,11 @@ enum {
     MAL_TYPE_STRING,
     MAL_TYPE_KEYWORD,
     MAL_TYPE_NUMBER,
+    MAL_TYPE_NATIVE_FUNCTION,
     MAL_TYPE_ERRMSG
 };
 
+struct MalNativeData;
 typedef struct MalValue {
     uint8_t type;
     uint8_t is_gc;
@@ -27,8 +29,16 @@ typedef struct MalValue {
         char* as_str;
         struct MalValue* as_list;
         long as_int;
+        struct MalNativeData* as_native;
     };
 } MalValue;
+
+typedef MalValue (*MalNativeFn)(uint32_t size, MalValue* args);
+typedef struct MalNativeData {
+    char* name;
+    MalNativeFn fn;
+} MalNativeData;
+
 
 void* gc_alloc(size_t size);
 void* gc_realloc(void* ptr, size_t size);

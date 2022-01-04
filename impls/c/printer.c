@@ -37,6 +37,11 @@ void print_value(StringBuffer* buffer, MalValue value, bool print_readably) {
         case MAL_TYPE_ERRMSG:
             sb_print_string(buffer, value.as_str, value.size);
             break;
+        case MAL_TYPE_NATIVE_FUNCTION:
+            sb_printf(buffer, "#<native %s>", value.as_native->name);
+            break;
+           default: 
+           sb_print_string(buffer, "#<Error! Unknown type>>>", 22);
     }
 }
 
