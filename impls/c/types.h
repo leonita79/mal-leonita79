@@ -43,6 +43,7 @@ typedef struct MalNativeData {
 void* gc_alloc(size_t size);
 void* gc_realloc(void* ptr, size_t size);
 void gc_mark(MalValue value);
+void gc_mark_new();
 void gc_collect(bool full);
 void gc_destroy();
 
