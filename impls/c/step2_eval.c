@@ -31,28 +31,25 @@ MalValue native_div(uint32_t size, MalValue* args) {
     return make_number(value);
 }
 
-MalNativeData repl_env[]={
+MalNativeData repl_env_data[]={
     {"+", &native_add},
     {"-", &native_sub},
     {"*", &native_mul},
     {"/", &native_div}
 };
 
+MalValue* repl_env;
+
 MalValue READ(char* str) {
     return read_str(str); 
 }
-MalValue eval_symbol(MalValue ast, MalNativeData* env) {
-    for(int i=0; i<4; i++) {
-        if(strncmp(ast.as_str,repl_env[i].name, ast.size)==0) {
-            MalValue value={.type=MAL_TYPE_NATIVE_FUNCTION, .is_gc=0};
-            value.as_native=&repl_env[i];
-            return value;
-        }
-    }
+MalValue eval_symbol(MalValue ast, MalValue* env) {
+    MalValue* value=map_get(env, ast);
+    if(value) return *value;
     return make_errmsg("Symbol not defined");
 }
-MalValue EVAL(MalValue ast, MalNativeData* env);
-MalValue eval_list(MalValue ast, MalNativeData* env) {
+MalValue EVAL(MalValue ast, MalValue* env);
+MalValue eval_list(MalValue ast, MalValue* env) {
     if(ast.size==0) return ast;
     MalValue* list=gc_alloc(ast.size*sizeof(MalValue));
     for(int i=0; i<ast.size; i++) {
@@ -64,21 +61,37 @@ MalValue eval_list(MalValue ast, MalNativeData* env) {
     }
     return make_list(ast.type, list, ast.size);
 }
-MalValue eval_ast(MalValue ast, MalNativeData* env) {
+MalValue eval_map(MalValue ast, MalValue* env) {
+    if(ast.as_list[0].size==0) return ast;
+    MalValue* map=map_init(ast.as_list[0].size);
+    for(size_t i=1; i<=ast.size; i++) {
+        if(ast.as_list[i].type) {
+            MalValue value=EVAL(ast.as_list[i+ast.size], env);
+            switch(value.type) {
+                case MAL_TYPE_ERRMSG:
+                    return value;
+            }
+            map=map_set(map, ast.as_list[i], value);
+        }
+    }
+    return make_map(ast.type, map);
+}
+MalValue eval_ast(MalValue ast, MalValue* env) {
     switch(ast.type) {
         case MAL_TYPE_SYMBOL:
             return eval_symbol(ast, env);
         case MAL_TYPE_LIST:
         case MAL_TYPE_VECTOR:
-        case MAL_TYPE_MAP:
             return eval_list(ast, env);
+        case MAL_TYPE_MAP:
+            return eval_map(ast, env);
         default:
             return ast;
     }
 }
-MalValue EVAL(MalValue ast, MalNativeData* env) {
+MalValue EVAL(MalValue ast, MalValue* env) {
     MalValue value=eval_ast(ast, env);
-    if(ast.type==MAL_TYPE_LIST && ast.size>0) {
+    if(ast.type==MAL_TYPE_LIST && value.type==MAL_TYPE_LIST && ast.size>0) {
         MalValue fn=value.as_list[0];
         switch(fn.type) {
             case MAL_TYPE_NATIVE_FUNCTION:
@@ -95,9 +108,21 @@ char* PRINT(MalValue value) {
 char* rep(char* str) {
     return PRINT(EVAL(READ(str), repl_env));
 }
+void gc_mark_env() {
+    gc_mark(make_map(MAL_TYPE_MAP, repl_env));
+}
 
 int main() {
     char* input;
+    int repl_env_size=sizeof(repl_env_data)/sizeof(repl_env_data[0]);
+    repl_env=map_init(repl_env_size);
+    for(int i=0; i<repl_env_size; i++) {
+        repl_env=map_set(repl_env,
+            make_const_atomic(MAL_TYPE_SYMBOL, repl_env_data[i].name, strlen(repl_env_data[i].name)),
+            make_native_function(&repl_env_data[i])
+        );
+    }
+    gc_mark_env();
     linenoiseHistorySetMaxLen(256);
     while(input = linenoise("user> ")) {
         char* str=input;

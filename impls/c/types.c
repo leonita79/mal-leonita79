@@ -21,6 +21,7 @@ GCData* gc_cur_top=NULL;
 void* gc_alloc(size_t size) {
     GCData* ptr=malloc(size+sizeof(GCData));
     if(!ptr) {
+        gc_mark_env();
         gc_mark_new();
         gc_collect(true);
         ptr=malloc(size+sizeof(GCData));
@@ -42,6 +43,7 @@ void* gc_realloc(void* ptr, size_t size) {
     GCData* old_ptr=PTR_TO_GC_DATA(ptr);
     GCData* new_ptr=realloc(old_ptr, size+sizeof(GCData));
     if(!new_ptr) {
+        gc_mark_env();
         gc_mark_new();
         gc_collect(true);
         new_ptr=realloc(old_ptr, size+sizeof(GCData));
@@ -60,10 +62,16 @@ void gc_mark(MalValue value) {
     switch(value.type) {
         case MAL_TYPE_LIST:
         case MAL_TYPE_VECTOR:
-        case MAL_TYPE_MAP:
             ptr=PTR_TO_GC_DATA(value.as_list);
             if(!GC_IS_MARKED(ptr)) {
                 for(int i=0; i<value.size; i++)
+                    gc_mark(value.as_list[i]);
+            }
+            break;
+        case MAL_TYPE_MAP:
+            ptr=PTR_TO_GC_DATA(value.as_list);
+            if(!GC_IS_MARKED(ptr)) {
+                for(int i=1; i<=2*value.size; i++)
                     gc_mark(value.as_list[i]);
             }
             break;
@@ -127,28 +135,124 @@ MalValue mal_copy(MalValue value) {
 }
 
 MalValue make_list(uint8_t type, MalValue* list, uint32_t size) {
-    MalValue value=(MalValue){.type=type, .is_gc=1, .size=size};
-    value.as_list=list;
-    return value;
+    return (MalValue){
+        .type=type,
+        .is_gc=1,
+        .size=size,
+        .as_list=list
+    };
+}
+MalValue make_map(uint8_t type, MalValue* map) {
+    return (MalValue){
+        .type=type,
+        .is_gc=1,
+        .size=map[0].capacity,
+        .as_list=map
+    };
 }
 MalValue make_const_atomic(uint8_t type, char* string, uint32_t size) {
-    MalValue value=(MalValue){.type=type, .is_gc=0, .size=size};
-    value.as_str=string;
-    return value;
+    return (MalValue){
+        .type=type,
+        .is_gc=0,
+        .length=size,
+        .hash=map_hash(string, size),
+        .as_str=string
+    };
 }
 MalValue make_number(long data) {
-    MalValue value=(MalValue){.type=MAL_TYPE_NUMBER, .is_gc=0};
-    value.as_int=data;
-    return value;
+    return (MalValue){
+        .type=MAL_TYPE_NUMBER,
+        .is_gc=0,
+        .as_int=data
+    };
 }
-MalValue make_native_function(long id) {
-    MalValue value=(MalValue){.type=MAL_TYPE_NATIVE_FUNCTION, .is_gc=0};
-    value.as_int=id;
-    return value;
+MalValue make_native_function(MalNativeData* data) {
+    return (MalValue){
+        .type=MAL_TYPE_NATIVE_FUNCTION,
+        .is_gc=0,
+        .as_native=data
+    };
 };
 MalValue make_errmsg(char* msg) {
-    MalValue value=(MalValue){.type=MAL_TYPE_ERRMSG, .is_gc=0, .size=msg ? strlen(msg) : 0};
-    value.as_str=msg;
-    return value;
+    return (MalValue){
+        .type=MAL_TYPE_ERRMSG,
+        .is_gc=0,
+        .length=(msg ? strlen(msg) : 0),
+        .as_str=msg
+    };
+}
+
+bool string_equals(MalValue a, MalValue b) {
+    switch(a.type) {
+        case MAL_TYPE_SYMBOL:
+        case MAL_TYPE_KEYWORD:
+        case MAL_TYPE_STRING:
+            if(a.type!=b.type) return false;
+            if(a.hash!=b.hash) return false;
+            if(a.length!=b.length) return false;
+            return strncmp(a.as_str, b.as_str, a.length)==0;
+        default:
+            return false;
+    }
+}
+
+
+// 32-bit FNV-1a hash algorithm;
+uint32_t map_hash(const char* string, uint32_t size) {
+    const uint32_t fnv_prime=0x01000193;
+    const uint32_t fnv_offset_basis=0x811c9dc5;
+    uint32_t hash=fnv_offset_basis;
+    for(uint32_t i=0; i<size; i++) {
+        hash ^= (uint32_t)string[i];
+        hash *= fnv_prime;
+    }
+    return hash;
+}
+MalValue* map_init(uint32_t size) {
+    size_t capacity=size*4/3;
+    if(capacity>size) capacity=size;
+    MalValue* map=gc_alloc((2*capacity+1)*sizeof(MalValue));
+    for(int i=0; i<2*capacity+1; i++)
+        map[i]=(MalValue){0};
+    map[0].capacity=capacity;
+    return map;
+}
+MalValue* map_set(MalValue* map, MalValue key, MalValue value) {
+    MalValue* ptr=map_get(map, key);
+    if(ptr) {
+        *ptr=value;
+        return map;
+    }
+    MalValue* new_map=map;
+    size_t capacity=map[0].capacity;
+    if((map[0].size+1)*4/3>capacity && capacity<=0x7FFFFFFF) {
+        new_map=map_init(2*capacity);
+        for(size_t i=1; i<=capacity; i++) {
+            if(map[i].type)
+                new_map=map_set(new_map, map[i], map[i+capacity]);
+        }
+        capacity=new_map[0].capacity;
+    }
+    for(size_t i=0; i<capacity; i++) {
+        size_t index=((key.hash+i)%capacity)+1;
+        if(!new_map[index].type) {
+            new_map[0].size++;
+            new_map[index]=key;
+            new_map[index+capacity]=value;
+            return new_map;
+        }
+    }
+    return new_map;
+}
+MalValue* map_get(MalValue* map, MalValue key) {
+    uint32_t capacity=map[0].capacity;
+    for(size_t i=0; i<capacity; i++) {
+        size_t index=((key.hash+i)%capacity)+1;
+        if(!map[index].type)
+            return NULL;
+        if(string_equals(map[index], key))
+            return map+index+capacity;
+    }
+    return NULL;
 }
 

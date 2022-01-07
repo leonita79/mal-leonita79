@@ -22,9 +22,18 @@ enum {
 
 struct MalNativeData;
 typedef struct MalValue {
-    uint8_t type;
-    uint8_t is_gc;
-    uint32_t size;
+    union {
+        struct {
+            uint8_t type;
+            uint8_t is_gc;
+            uint16_t length;
+        };
+        uint32_t capacity;
+    };
+    union {
+        uint32_t size;
+        uint32_t hash;
+    };
     union {
         char* as_str;
         struct MalValue* as_list;
@@ -43,6 +52,7 @@ typedef struct MalNativeData {
 void* gc_alloc(size_t size);
 void* gc_realloc(void* ptr, size_t size);
 void gc_mark(MalValue value);
+void gc_mark_env(); //Define in env.c
 void gc_mark_new();
 void gc_collect(bool full);
 void gc_destroy();
@@ -50,8 +60,17 @@ void gc_destroy();
 MalValue mal_copy(MalValue value);
 
 MalValue make_list(uint8_t type, MalValue* data, uint32_t size);
+MalValue make_map(uint8_t type, MalValue* data);
 MalValue make_const_atomic(uint8_t type, char* string, uint32_t size);
 MalValue make_number(long data);
+MalValue make_native_function(MalNativeData* data);
 MalValue make_errmsg(char* msg);
+
+bool string_equals(MalValue a, MalValue b);
+
+uint32_t map_hash(const char* string, uint32_t size);
+MalValue* map_init(uint32_t size);
+MalValue* map_set(MalValue* map, MalValue key, MalValue value);
+MalValue* map_get(MalValue* map, MalValue key);
 #endif //TYPES_H
 

@@ -23,7 +23,7 @@ void print_value(StringBuffer* buffer, MalValue value, bool print_readably) {
             print_list(buffer, '[', value, ']', print_readably);
             break;
         case MAL_TYPE_MAP:
-            print_list(buffer, '{', value, '}', print_readably);
+            print_map(buffer, '{', value, '}', print_readably);
             break;
         case MAL_TYPE_NUMBER: 
             sb_printf(buffer, "%li", value.as_int);
@@ -35,7 +35,7 @@ void print_value(StringBuffer* buffer, MalValue value, bool print_readably) {
         case MAL_TYPE_STRING:
         case MAL_TYPE_KEYWORD:
         case MAL_TYPE_ERRMSG:
-            sb_print_string(buffer, value.as_str, value.size);
+            sb_print_string(buffer, value.as_str, value.length);
             break;
         case MAL_TYPE_NATIVE_FUNCTION:
             sb_printf(buffer, "#<native %s>", value.as_native->name);
@@ -47,10 +47,26 @@ void print_value(StringBuffer* buffer, MalValue value, bool print_readably) {
 
 void print_list(StringBuffer* buffer, char open, MalValue value, char close, bool print_readably) {
     sb_print_char(buffer, open);
-    for(int i=0; i<value.size; i++) {
+    for(size_t i=0; i<value.size; i++) {
         if(i>0)
             sb_print_char(buffer, ' ');
         print_value(buffer, value.as_list[i], print_readably);    
+    }
+    sb_print_char(buffer, close);
+}
+
+void print_map(StringBuffer* buffer, char open, MalValue value, char close, bool print_readably) {
+    sb_print_char(buffer, open);
+    bool first=true;
+    for(size_t i=1; i<=value.size; i++) {
+        if(value.as_list[i].type) {
+            if(!first)
+                sb_print_char(buffer, ' ');
+            print_value(buffer, value.as_list[i], print_readably);    
+            sb_print_char(buffer, ' ');
+            print_value(buffer, value.as_list[i+value.size], print_readably);
+            first=false;
+        }
     }
     sb_print_char(buffer, close);
 }

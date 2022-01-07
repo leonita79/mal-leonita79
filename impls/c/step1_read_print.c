@@ -17,7 +17,7 @@ char* PRINT(MalValue value) {
 char* rep(char* str) {
     return PRINT(EVAL(READ(str)));
 }
-
+void gc_mark_env() {}
 int main() {
     char* input;
     linenoiseHistorySetMaxLen(256);

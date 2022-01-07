@@ -61,7 +61,7 @@ MalValue read_form(Reader* reader) {
         case '[':
             return read_list(reader, MAL_TYPE_VECTOR, ']');
         case '{':
-            return read_list(reader, MAL_TYPE_MAP, '}');
+            return read_map(reader, MAL_TYPE_MAP, '}');
         case '\'':
             return read_quote(reader, "quote");
         case '`':
@@ -99,6 +99,32 @@ MalValue read_list(Reader* reader, uint8_t type, char delim) {
         return reader->error=make_errmsg("Unexpected end of input");
     reader_next(reader);
     return make_list(type, gc_realloc(list, list_size*sizeof(MalValue)), list_size);
+}
+MalValue read_map(Reader* reader, uint8_t type, char delim) {
+    if(reader->error.type)
+        return reader->error;
+    MalValue* map=map_init(8);
+
+    reader_next(reader);
+    while(reader_peek(reader)[0] && reader_peek(reader)[0]!=delim) {
+        MalValue key=read_form(reader);
+        if(reader->error.type)
+            return reader->error;
+        if(!reader_peek(reader)[0])
+            return reader->error=make_errmsg("Unexpected end of input");
+        if(reader_peek(reader)[0]==delim)
+            return reader->error=make_errmsg("Unexpected }");
+        MalValue value=read_form(reader);
+        if(reader->error.type)
+            return reader->error;
+        if(!reader_peek(reader)[0])
+            return reader->error=make_errmsg("Unexpected end of input");
+        map=map_set(map,key,value); 
+    }
+    if(!reader_peek(reader)[0])
+        return reader->error=make_errmsg("Unexpected end of input");
+    reader_next(reader);
+    return make_map(type, map);
 }
 MalValue read_atom(Reader* reader) {
     MalValue value;

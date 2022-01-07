@@ -8,7 +8,7 @@ char* PRINT(char* str) { return str; }
 char* rep(char* str) {
     return PRINT(EVAL(READ(str)));
 }
-
+void gc_mark_env() {}
 int main() {
     char* str;
     linenoiseHistorySetMaxLen(256);
