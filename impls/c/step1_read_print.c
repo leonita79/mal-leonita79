@@ -17,7 +17,9 @@ char* PRINT(MalValue value) {
 char* rep(char* str) {
     return PRINT(EVAL(READ(str)));
 }
-void gc_mark_env() {}
+MalEnv repl_env=NULL; //required to link with types.c
+MalEnv special_forms=NULL; //required to link with types.c
+
 int main() {
     char* input;
     linenoiseHistorySetMaxLen(256);

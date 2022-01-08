@@ -38,18 +38,19 @@ MalNativeData repl_env_data[]={
     {"/", &native_div}
 };
 
-MalValue* repl_env;
+MalEnv repl_env;
+MalEnv special_forms=NULL; //required to link with types.c
 
 MalValue READ(char* str) {
     return read_str(str); 
 }
-MalValue eval_symbol(MalValue ast, MalValue* env) {
+MalValue eval_symbol(MalValue ast, MalEnv env) {
     MalValue* value=map_get(env, ast);
     if(value) return *value;
     return make_errmsg("Symbol not defined");
 }
-MalValue EVAL(MalValue ast, MalValue* env);
-MalValue eval_list(MalValue ast, MalValue* env) {
+MalValue EVAL(MalValue ast, MalEnv env);
+MalValue eval_list(MalValue ast, MalEnv env) {
     if(ast.size==0) return ast;
     MalValue* list=gc_alloc(ast.size*sizeof(MalValue));
     for(int i=0; i<ast.size; i++) {
@@ -61,7 +62,7 @@ MalValue eval_list(MalValue ast, MalValue* env) {
     }
     return make_list(ast.type, list, ast.size);
 }
-MalValue eval_map(MalValue ast, MalValue* env) {
+MalValue eval_map(MalValue ast, MalEnv env) {
     if(ast.as_list[0].size==0) return ast;
     MalValue* map=map_init(ast.as_list[0].size);
     for(size_t i=1; i<=ast.size; i++) {
@@ -76,7 +77,7 @@ MalValue eval_map(MalValue ast, MalValue* env) {
     }
     return make_map(ast.type, map);
 }
-MalValue eval_ast(MalValue ast, MalValue* env) {
+MalValue eval_ast(MalValue ast, MalEnv env) {
     switch(ast.type) {
         case MAL_TYPE_SYMBOL:
             return eval_symbol(ast, env);
@@ -89,7 +90,7 @@ MalValue eval_ast(MalValue ast, MalValue* env) {
             return ast;
     }
 }
-MalValue EVAL(MalValue ast, MalValue* env) {
+MalValue EVAL(MalValue ast, MalEnv env) {
     MalValue value=eval_ast(ast, env);
     if(ast.type==MAL_TYPE_LIST && value.type==MAL_TYPE_LIST && ast.size>0) {
         MalValue fn=value.as_list[0];
@@ -108,21 +109,22 @@ char* PRINT(MalValue value) {
 char* rep(char* str) {
     return PRINT(EVAL(READ(str), repl_env));
 }
-void gc_mark_env() {
-    gc_mark(make_map(MAL_TYPE_MAP, repl_env));
-}
 
 int main() {
     char* input;
     int repl_env_size=sizeof(repl_env_data)/sizeof(repl_env_data[0]);
     repl_env=map_init(repl_env_size);
     for(int i=0; i<repl_env_size; i++) {
+        MalValue fn=(MalValue){
+            .type=MAL_TYPE_NATIVE_FUNCTION,
+            .is_gc=0,
+            .as_native=&repl_env_data[i]
+        };
         repl_env=map_set(repl_env,
-            make_const_atomic(MAL_TYPE_SYMBOL, repl_env_data[i].name, strlen(repl_env_data[i].name)),
-            make_native_function(&repl_env_data[i])
+            make_atomic(MAL_TYPE_SYMBOL, repl_env_data[i].name, strlen(repl_env_data[i].name), MAL_GC_CONST),
+            fn
         );
     }
-    gc_mark_env();
     linenoiseHistorySetMaxLen(256);
     while(input = linenoise("user> ")) {
         char* str=input;
@@ -131,8 +133,9 @@ int main() {
             linenoiseHistoryAdd(str);
             printf("%s\n", rep(str));
         }
+        gc_mark_env(repl_env);
         free(input);
-        gc_collect(false);
+        gc_collect();
     }
     gc_destroy();
 }

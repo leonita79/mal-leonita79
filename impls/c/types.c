@@ -1,7 +1,10 @@
 #include "types.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdarg.h>
 
+extern MalEnv repl_env, special_forms;
 typedef struct GCData {
     struct GCData* next;
     struct GCData* prev;
@@ -21,7 +24,8 @@ GCData* gc_cur_top=NULL;
 void* gc_alloc(size_t size) {
     GCData* ptr=malloc(size+sizeof(GCData));
     if(!ptr) {
-        gc_mark_env();
+        gc_mark_env(repl_env);
+        gc_mark_env(special_forms);
         gc_mark_new();
         gc_collect(true);
         ptr=malloc(size+sizeof(GCData));
@@ -43,7 +47,8 @@ void* gc_realloc(void* ptr, size_t size) {
     GCData* old_ptr=PTR_TO_GC_DATA(ptr);
     GCData* new_ptr=realloc(old_ptr, size+sizeof(GCData));
     if(!new_ptr) {
-        gc_mark_env();
+        gc_mark_env(repl_env);
+        gc_mark_env(special_forms);
         gc_mark_new();
         gc_collect(true);
         new_ptr=realloc(old_ptr, size+sizeof(GCData));
@@ -57,34 +62,61 @@ void* gc_realloc(void* ptr, size_t size) {
     if(gc_prev_top==old_ptr) gc_prev_top=new_ptr;
     return GC_DATA_TO_PTR(new_ptr);
 }
-void gc_mark(MalValue value) {
+void gc_mark(MalValue* value) {
     GCData* ptr=NULL;
-    switch(value.type) {
+    switch(value->type) {
         case MAL_TYPE_LIST:
         case MAL_TYPE_VECTOR:
-            ptr=PTR_TO_GC_DATA(value.as_list);
+            ptr=PTR_TO_GC_DATA(value->as_list);
             if(!GC_IS_MARKED(ptr)) {
-                for(int i=0; i<value.size; i++)
-                    gc_mark(value.as_list[i]);
+                GC_SET_MARK(ptr);
+                for(int i=0; i<value->size; i++)
+                    gc_mark(value->as_list+i);
             }
-            break;
+            return;
         case MAL_TYPE_MAP:
-            ptr=PTR_TO_GC_DATA(value.as_list);
+            ptr=PTR_TO_GC_DATA(value->as_list);
             if(!GC_IS_MARKED(ptr)) {
-                for(int i=1; i<=2*value.size; i++)
-                    gc_mark(value.as_list[i]);
+                GC_SET_MARK(ptr);
+                for(int i=1; i<=value->size; i++) {
+                    if(value->as_list[i].type) {
+                        gc_mark(value->as_list+i);
+                        gc_mark(value->as_list+value->size+i);
+                    }
+                }
             }
-            break;
+            return;
 
         case MAL_TYPE_SYMBOL:
         case MAL_TYPE_STRING:
         case MAL_TYPE_KEYWORD:
         case MAL_TYPE_ERRMSG:
-            ptr=PTR_TO_GC_DATA(value.as_str);
+            if(value->is_gc==MAL_GC_TEMP) {
+                char* old_str=value->as_str;
+                value->as_str=gc_alloc(value->length);
+                memcpy(value->as_str, old_str, value->length);
+                value->is_gc=MAL_GC_MEM;
+            }
+            ptr=PTR_TO_GC_DATA(value->as_str);
             break;
     }
-    if(!value.is_gc || !ptr) return;
+    if(value->is_gc!=MAL_GC_MEM || !ptr) return;
     GC_SET_MARK(ptr);
+}
+void gc_mark_env(MalEnv env) {
+    if(!env) return;
+    GCData* ptr=PTR_TO_GC_DATA(env);
+    if(env[0].as_list)
+        gc_mark_env(env[0].as_list);
+    if(!GC_IS_MARKED(ptr)) {
+        GC_SET_MARK(ptr);
+        for(int i=1; i<=env[0].capacity; i++) {
+            if(env[i].type) {
+                gc_mark(env+i);
+                gc_mark(env+env[0].capacity+i);
+            }
+        }
+    }
 }
 void gc_mark_new() {
     if(!gc_prev_top) return;
@@ -94,17 +126,13 @@ void gc_mark_new() {
         obj=obj->next;
     }
 }
-void gc_collect(bool full) {
-    GCData** ptr;
-    if(full || !gc_prev_top) {
-        ptr=&gc_base;
-    } else {
-        ptr=&gc_prev_top->next;
-    }
+void gc_collect() {
+    GCData** ptr=&gc_base;
     GCData* obj=*ptr;
-    gc_cur_top=gc_prev_top;
+    gc_cur_top=NULL;
     while(obj) {
         if(GC_IS_MARKED(obj)) {
+            GC_CLEAR_MARK(obj);
             gc_cur_top=obj;
             ptr=&obj->next;
             obj=obj->next;
@@ -113,11 +141,6 @@ void gc_collect(bool full) {
             free(obj);
             obj=*ptr;
         }
-    }
-    obj=gc_base;
-    while(obj) {
-        GC_CLEAR_MARK(obj);
-        obj=obj->next;
     }
     gc_prev_top=gc_cur_top;
 }
@@ -130,14 +153,10 @@ void gc_destroy() {
     }
     gc_cur_top=gc_prev_top=gc_base=NULL;
 }
-MalValue mal_copy(MalValue value) {
-    return value;
-}
-
 MalValue make_list(uint8_t type, MalValue* list, uint32_t size) {
     return (MalValue){
         .type=type,
-        .is_gc=1,
+        .is_gc=MAL_GC_MEM,
         .size=size,
         .as_list=list
     };
@@ -145,15 +164,15 @@ MalValue make_list(uint8_t type, MalValue* list, uint32_t size) {
 MalValue make_map(uint8_t type, MalValue* map) {
     return (MalValue){
         .type=type,
-        .is_gc=1,
+        .is_gc=MAL_GC_MEM,
         .size=map[0].capacity,
         .as_list=map
     };
 }
-MalValue make_const_atomic(uint8_t type, char* string, uint32_t size) {
+MalValue make_atomic(uint8_t type, char* string, uint32_t size, uint8_t gc) {
     return (MalValue){
         .type=type,
-        .is_gc=0,
+        .is_gc=gc,
         .length=size,
         .hash=map_hash(string, size),
         .as_str=string
@@ -162,24 +181,33 @@ MalValue make_const_atomic(uint8_t type, char* string, uint32_t size) {
 MalValue make_number(long data) {
     return (MalValue){
         .type=MAL_TYPE_NUMBER,
-        .is_gc=0,
+        .is_gc=MAL_GC_CONST,
         .as_int=data
     };
 }
-MalValue make_native_function(MalNativeData* data) {
-    return (MalValue){
-        .type=MAL_TYPE_NATIVE_FUNCTION,
-        .is_gc=0,
-        .as_native=data
-    };
-};
 MalValue make_errmsg(char* msg) {
     return (MalValue){
         .type=MAL_TYPE_ERRMSG,
-        .is_gc=0,
+        .is_gc=MAL_GC_CONST,
         .length=(msg ? strlen(msg) : 0),
         .as_str=msg
     };
+}
+MalValue make_errmsg_f(const char* fmt, ...) {
+    va_list args1;
+    va_list args2;
+    MalValue value=(MalValue) {
+        .type=MAL_TYPE_ERRMSG,
+        .is_gc=MAL_GC_MEM
+    };
+    va_start(args1, fmt);
+    va_copy(args2, args1);
+    value.length=vsnprintf(NULL, 0, fmt, args1);
+    value.as_str=gc_alloc(value.length+1);
+    vsnprintf(value.as_str, value.length+1, fmt, args2);
+    va_end(args1);
+    va_end(args2);
+    return value;
 }
 
 bool string_equals(MalValue a, MalValue b) {

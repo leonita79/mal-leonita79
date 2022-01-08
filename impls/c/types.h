@@ -17,10 +17,18 @@ enum {
     MAL_TYPE_KEYWORD,
     MAL_TYPE_NUMBER,
     MAL_TYPE_NATIVE_FUNCTION,
+    MAL_TYPE_SPECIAL_FORM,
     MAL_TYPE_ERRMSG
 };
 
+enum {
+    MAL_GC_CONST,
+    MAL_GC_MEM,
+    MAL_GC_TEMP
+};
+
 struct MalNativeData;
+struct MalSpecialForm;
 typedef struct MalValue {
     union {
         struct {
@@ -39,32 +47,39 @@ typedef struct MalValue {
         struct MalValue* as_list;
         long as_int;
         struct MalNativeData* as_native;
+        struct MalSpecialData* as_special;
     };
 } MalValue;
+
+typedef MalValue* MalEnv;
 
 typedef MalValue (*MalNativeFn)(uint32_t size, MalValue* args);
 typedef struct MalNativeData {
     char* name;
     MalNativeFn fn;
 } MalNativeData;
+typedef bool (*MalSpecialForm)(MalValue* ast, MalEnv* env);
+typedef struct MalSpecialData {
+    char* name;
+    MalSpecialForm fn;
+} MalSpecialData;
+
 
 
 void* gc_alloc(size_t size);
 void* gc_realloc(void* ptr, size_t size);
-void gc_mark(MalValue value);
-void gc_mark_env(); //Define in env.c
+void gc_mark(MalValue* value);
+void gc_mark_env(MalEnv env);
 void gc_mark_new();
-void gc_collect(bool full);
+void gc_collect();
 void gc_destroy();
-
-MalValue mal_copy(MalValue value);
 
 MalValue make_list(uint8_t type, MalValue* data, uint32_t size);
 MalValue make_map(uint8_t type, MalValue* data);
-MalValue make_const_atomic(uint8_t type, char* string, uint32_t size);
+MalValue make_atomic(uint8_t type, char* string, uint32_t size, uint8_t gc);
 MalValue make_number(long data);
-MalValue make_native_function(MalNativeData* data);
 MalValue make_errmsg(char* msg);
+MalValue make_errmsg_f(const char* fmt,...);
 
 bool string_equals(MalValue a, MalValue b);
 

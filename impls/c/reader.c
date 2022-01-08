@@ -73,7 +73,7 @@ MalValue read_form(Reader* reader) {
         case '^':
             return read_with_meta(reader);
         case ';':
-            return make_const_atomic(MAL_TYPE_NIL, "nil", 3);
+            return make_atomic(MAL_TYPE_NIL, "nil", 3, MAL_GC_CONST);
         default:
             return read_atom(reader);
     }
@@ -129,22 +129,22 @@ MalValue read_map(Reader* reader, uint8_t type, char delim) {
 MalValue read_atom(Reader* reader) {
     MalValue value;
     if(reader_peek(reader)[0]=='\"') {
-        value=make_const_atomic(MAL_TYPE_STRING, reader_peek(reader), reader_size(reader));
+        value=make_atomic(MAL_TYPE_STRING, reader_peek(reader), reader_size(reader), MAL_GC_TEMP);
     } else if(reader_peek(reader)[0]==':') {
-        value=make_const_atomic(MAL_TYPE_KEYWORD, reader_peek(reader), reader_size(reader));
+        value=make_atomic(MAL_TYPE_KEYWORD, reader_peek(reader), reader_size(reader), MAL_GC_TEMP);
     } else if(strncmp("nil", reader_peek(reader), reader_size(reader))==0) {
-        value=make_const_atomic(MAL_TYPE_NIL, reader_peek(reader), reader_size(reader));
+        value=make_atomic(MAL_TYPE_NIL, "nil", 3, MAL_GC_CONST);
     } else if(strncmp("false", reader_peek(reader), reader_size(reader))==0) {
-        value=make_const_atomic(MAL_TYPE_FALSE, reader_peek(reader), reader_size(reader));
+        value=make_atomic(MAL_TYPE_FALSE, "false", 5, MAL_GC_CONST);
     } else if(strncmp("true", reader_peek(reader), reader_size(reader))==0) {
-        value=make_const_atomic(MAL_TYPE_TRUE, reader_peek(reader), reader_size(reader));
+        value=make_atomic(MAL_TYPE_TRUE, "true", 4, MAL_GC_CONST);
     } else {
         char* tailptr=NULL;
         long number=strtol(reader_peek(reader), &tailptr, 10); 
         if(tailptr!=reader_peek(reader) && tailptr==reader_peek(reader)+reader_size(reader)) {
             value=make_number(number);
         } else {
-            value=make_const_atomic(MAL_TYPE_SYMBOL, reader_peek(reader), reader_size(reader));
+            value=make_atomic(MAL_TYPE_SYMBOL, reader_peek(reader), reader_size(reader), MAL_GC_TEMP);
         }
     }
     if(reader->error.type)
@@ -156,7 +156,7 @@ MalValue read_atom(Reader* reader) {
 MalValue read_quote(Reader* reader, char* quote) {
     MalValue* list=gc_alloc(sizeof(MalValue)*2);
     reader_next(reader);    
-    list[0]=make_const_atomic(MAL_TYPE_SYMBOL, quote, strlen(quote));
+    list[0]=make_atomic(MAL_TYPE_SYMBOL, quote, strlen(quote), MAL_GC_CONST);
     list[1]=read_form(reader);
     if(reader->error.type)
         return reader->error;
@@ -165,7 +165,7 @@ MalValue read_quote(Reader* reader, char* quote) {
 MalValue read_with_meta(Reader* reader) {
     MalValue* list=gc_alloc(sizeof(MalValue)*3);
     reader_next(reader);    
-    list[0]=make_const_atomic(MAL_TYPE_SYMBOL, "with-meta", 9);
+    list[0]=make_atomic(MAL_TYPE_SYMBOL, "with-meta", 9, MAL_GC_CONST);
     list[2]=read_form(reader);
     list[1]=read_form(reader);
     if(reader->error.type)

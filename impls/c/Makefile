@@ -1,10 +1,12 @@
-STEPS = step0_repl step1_read_print step2_eval
-FILES = reader.o printer.o types.o linenoise/linenoise.o
-HEADERS = reader.h printer.h types.h linenoise/linenoise.h
+STEPS = step1_read_print step2_eval step3_env
+FILES = reader.o printer.o types.o env.o linenoise/linenoise.o
+HEADERS = reader.h printer.h types.h env.h linenoise/linenoise.h
 CFLAGS = -g
 
 .PHONY: all
-all: ${STEPS}
+all: step0_repl ${STEPS}
+step0_repl: step0_repl.o linenoise/linenoise.o
+	${CC} step0_repl.o linenoise/linenoise.o -o step0_repl $(LDFLAGS)
 $(STEPS): %: %.o $(FILES) $(HEADERS)
 	$(CC) $@.o $(FILES) -o $@ $(LDFLAGS) 
 
