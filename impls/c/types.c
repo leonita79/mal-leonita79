@@ -88,16 +88,18 @@ void gc_mark(MalValue* value) {
             return;
 
         case MAL_TYPE_SYMBOL:
-        case MAL_TYPE_STRING:
         case MAL_TYPE_KEYWORD:
         case MAL_TYPE_ERRMSG:
             if(value->is_gc==MAL_GC_TEMP) {
-                char* old_str=value->as_str;
-                value->as_str=gc_alloc(value->length);
-                memcpy(value->as_str, old_str, value->length);
+                char* old_str=value->as_char;
+                value->as_char=gc_alloc(value->length);
+                memcpy(value->as_char, old_str, value->length);
                 value->is_gc=MAL_GC_MEM;
             }
-            ptr=PTR_TO_GC_DATA(value->as_str);
+            ptr=PTR_TO_GC_DATA(value->as_char);
+            break;
+        case MAL_TYPE_STRING:
+            ptr=PTR_TO_GC_DATA(value->as_string);
             break;
     }
     if(value->is_gc!=MAL_GC_MEM || !ptr) return;
@@ -161,13 +163,37 @@ MalValue make_list(uint8_t type, MalValue* list, uint32_t size) {
         .as_list=list
     };
 }
-MalValue make_map(uint8_t type, MalValue* map) {
+MalValue make_map(MalValue* map) {
     return (MalValue){
-        .type=type,
+        .type=MAL_TYPE_MAP,
         .is_gc=MAL_GC_MEM,
         .size=map[0].capacity,
         .as_list=map
     };
+}
+MalValue make_string(const char* string, uint32_t size) {
+    MalValue value=(MalValue){
+        .type=MAL_TYPE_STRING,
+        .is_gc=MAL_GC_MEM,
+        .size=0,
+    };
+    value.as_string=gc_alloc(sizeof(MalStringData)+size);
+    uint32_t i=0;
+    while(i<size) {
+        if(string[i]=='\\') {
+            i++;
+            if(string[i]=='n')
+                value.as_string->str[value.size]='\n';
+            else
+                value.as_string->str[value.size]=string[i];
+        } else {
+            value.as_string->str[value.size]=string[i];
+        }
+        value.size++; i++;
+    }
+    value.as_string->hash=map_hash(value.as_string->str, value.size);
+    value.as_string->size=value.size;
+    return value;
 }
 MalValue make_atomic(uint8_t type, char* string, uint32_t size, uint8_t gc) {
     return (MalValue){
@@ -175,7 +201,7 @@ MalValue make_atomic(uint8_t type, char* string, uint32_t size, uint8_t gc) {
         .is_gc=gc,
         .length=size,
         .hash=map_hash(string, size),
-        .as_str=string
+        .as_char=string
     };
 }
 MalValue make_number(long data) {
@@ -190,7 +216,7 @@ MalValue make_errmsg(char* msg) {
         .type=MAL_TYPE_ERRMSG,
         .is_gc=MAL_GC_CONST,
         .length=(msg ? strlen(msg) : 0),
-        .as_str=msg
+        .as_char=msg
     };
 }
 MalValue make_errmsg_f(const char* fmt, ...) {
@@ -203,8 +229,8 @@ MalValue make_errmsg_f(const char* fmt, ...) {
     va_start(args1, fmt);
     va_copy(args2, args1);
     value.length=vsnprintf(NULL, 0, fmt, args1);
-    value.as_str=gc_alloc(value.length+1);
-    vsnprintf(value.as_str, value.length+1, fmt, args2);
+    value.as_char=gc_alloc(value.length+1);
+    vsnprintf(value.as_char, value.length+1, fmt, args2);
     va_end(args1);
     va_end(args2);
     return value;
@@ -214,11 +240,15 @@ bool string_equals(MalValue a, MalValue b) {
     switch(a.type) {
         case MAL_TYPE_SYMBOL:
         case MAL_TYPE_KEYWORD:
-        case MAL_TYPE_STRING:
             if(a.type!=b.type) return false;
             if(a.hash!=b.hash) return false;
             if(a.length!=b.length) return false;
-            return strncmp(a.as_str, b.as_str, a.length)==0;
+            return strncmp(a.as_char, b.as_char, a.length)==0;
+        case MAL_TYPE_STRING:
+            if(a.type!=b.type) return false;
+            if(a.as_string->hash != b.as_string->hash) return false;
+            if(a.size!=b.size) return false;
+            return strncmp(a.as_string->str, b.as_string->str, a.size)==0;
         default:
             return false;
     }

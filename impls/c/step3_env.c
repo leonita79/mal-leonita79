@@ -122,7 +122,7 @@ MalValue eval_map(MalValue ast, MalEnv* env) {
             map=map_set(map, ast.as_list[i], value);
         }
     }
-    return make_map(ast.type, map);
+    return make_map(map);
 }
 MalValue eval_ast(MalValue ast, MalEnv* env) {
     switch(ast.type) {

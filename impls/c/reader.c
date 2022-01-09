@@ -124,12 +124,12 @@ MalValue read_map(Reader* reader, uint8_t type, char delim) {
     if(!reader_peek(reader)[0])
         return reader->error=make_errmsg("Unexpected end of input");
     reader_next(reader);
-    return make_map(type, map);
+    return make_map(map);
 }
 MalValue read_atom(Reader* reader) {
     MalValue value;
     if(reader_peek(reader)[0]=='\"') {
-        value=make_atomic(MAL_TYPE_STRING, reader_peek(reader), reader_size(reader), MAL_GC_TEMP);
+        value=make_string(reader_peek(reader)+1, reader_size(reader)-2);
     } else if(reader_peek(reader)[0]==':') {
         value=make_atomic(MAL_TYPE_KEYWORD, reader_peek(reader), reader_size(reader), MAL_GC_TEMP);
     } else if(strncmp("nil", reader_peek(reader), reader_size(reader))==0) {

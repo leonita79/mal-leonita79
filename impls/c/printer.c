@@ -5,7 +5,7 @@
 
 char* pr_str(MalValue value, bool print_readably) {
     StringBuffer buffer={0};
-    if(value.type==MAL_TYPE_ERRMSG && !value.as_str)
+    if(value.type==MAL_TYPE_ERRMSG && !value.as_char)
         return NULL;
     buffer.capacity=32;
     buffer.ptr=gc_alloc(buffer.capacity);
@@ -32,10 +32,12 @@ void print_value(StringBuffer* buffer, MalValue value, bool print_readably) {
         case MAL_TYPE_FALSE:
         case MAL_TYPE_TRUE:
         case MAL_TYPE_SYMBOL:
-        case MAL_TYPE_STRING:
         case MAL_TYPE_KEYWORD:
         case MAL_TYPE_ERRMSG:
-            sb_print_string(buffer, value.as_str, value.length);
+            sb_print_string(buffer, value.as_char, value.length);
+            break;
+        case MAL_TYPE_STRING:
+            print_string(buffer, value, print_readably);
             break;
         case MAL_TYPE_NATIVE_FUNCTION:
             sb_printf(buffer, "#<native %s>", value.as_native->name);
@@ -69,6 +71,31 @@ void print_map(StringBuffer* buffer, char open, MalValue value, char close, bool
         }
     }
     sb_print_char(buffer, close);
+}
+void print_string(StringBuffer* buffer, MalValue value, bool print_readably) {
+    if(!print_readably) {
+        sb_print_char(buffer, '"');
+        sb_print_string(buffer, value.as_string->str, value.size);
+        sb_print_char(buffer, '"');
+        return;
+    }
+    sb_print_char(buffer, '"');
+    for(int i=0; i<value.size; i++) {
+        switch(value.as_string->str[i]) {
+            case '\n':
+                sb_print_char(buffer, '\\');
+                sb_print_char(buffer, 'n');
+                break;
+            case '"':
+            case '\\':
+                sb_print_char(buffer, '\\');
+                sb_print_char(buffer, value.as_string->str[i]);
+                break;
+            default:
+                sb_print_char(buffer, value.as_string->str[i]);
+        }
+    }
+    sb_print_char(buffer, '"');
 }
 
 void sb_print_char(StringBuffer* buffer, char ch) {

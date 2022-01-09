@@ -29,6 +29,7 @@ enum {
 
 struct MalNativeData;
 struct MalSpecialForm;
+struct MalStringData;
 typedef struct MalValue {
     union {
         struct {
@@ -43,11 +44,12 @@ typedef struct MalValue {
         uint32_t hash;
     };
     union {
-        char* as_str;
+        char* as_char;
         struct MalValue* as_list;
         long as_int;
         struct MalNativeData* as_native;
         struct MalSpecialData* as_special;
+        struct MalStringData* as_string;
     };
 } MalValue;
 
@@ -64,7 +66,11 @@ typedef struct MalSpecialData {
     MalSpecialForm fn;
 } MalSpecialData;
 
-
+typedef struct MalStringData {
+    uint32_t hash;
+    uint32_t size;
+    char str[];
+} MalStringData;
 
 void* gc_alloc(size_t size);
 void* gc_realloc(void* ptr, size_t size);
@@ -75,8 +81,9 @@ void gc_collect();
 void gc_destroy();
 
 MalValue make_list(uint8_t type, MalValue* data, uint32_t size);
-MalValue make_map(uint8_t type, MalValue* data);
+MalValue make_map(MalValue* data);
 MalValue make_atomic(uint8_t type, char* string, uint32_t size, uint8_t gc);
+MalValue make_string(const char* string, uint32_t size);
 MalValue make_number(long data);
 MalValue make_errmsg(char* msg);
 MalValue make_errmsg_f(const char* fmt,...);

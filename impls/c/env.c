@@ -16,8 +16,11 @@ MalEnv env_find(MalEnv env, MalValue key) {
     return env_find(env[0].as_list, key);
 }
 MalValue env_get(MalEnv env, MalValue key) {
-    if(!env)
-        return make_errmsg_f("'%.*s' not found", key.length, key.as_str);
+    if(key.type != MAL_TYPE_SYMBOL)
+        return make_errmsg("Lookup of non-symbol");
+    if(!env) {
+        return make_errmsg_f("'%.*s' not found", key.length, key.as_char);
+    }
     MalValue* value=map_get(env, key);
     if(value) return *value;
     return env_get(env[0].as_list, key);
