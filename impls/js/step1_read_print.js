@@ -1,13 +1,15 @@
 const readline = require('readline');
+const read_str = require('./reader.js');
+const pr_str = require('./printer.js');
 
 function READ(line) {
-    return line;
+    return read_str(line);
 }
-function EVAL(line) {
-    return line;
+function EVAL(value) {
+    return value;
 }
-function PRINT(line) {
-    return line;
+function PRINT(value) {
+    return pr_str(value, true);
 }
 function repl(line) {
     return PRINT(EVAL(READ(line)));
@@ -22,7 +24,11 @@ const rl = readline.createInterface({
 rl.prompt();
 
 rl.on('line', (line) => {
-    console.log(repl(line));
+    try {
+        console.log(repl(line));
+    } catch (e) {
+        console.log(e);
+    }
     rl.prompt();
 }).on('close', () => {
   process.exit(0);
