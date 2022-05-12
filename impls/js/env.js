@@ -1,7 +1,20 @@
 class Env {
-    constructor(outer) {
+    constructor(outer, binds, values) {
         this.outer = outer ? outer : null;
-        this.data = {};
+        if (Array.isArray(binds)) {
+            this.data={};
+            const binds_list = binds.slice(1);
+            while (binds_list.length && binds_list[0].description != '&') {
+                this.set(binds_list.shift(), values.shift()); 
+            }
+            if (binds_list.length) {
+                this.set(binds_list[1], [false, ...values]);
+            }
+        } else if (typeof binds === 'object') {
+            this.data = { ...binds };
+        } else {
+            this.data = {};
+        }
     }
     set(key, value) {
         this.data[key.description] = value;

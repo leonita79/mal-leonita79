@@ -88,6 +88,12 @@ class Reader {
                 return unquote_string(token.slice(1, -1));
             }
             throw 'Unexpected EOF';
+        } else if (token === 'nil') {
+            return null;
+        } else if (token === 'true') {
+            return true;
+        } else if (token === 'false') {
+            return false;
         } else {
             return Symbol(token);
         }

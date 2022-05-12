@@ -12,12 +12,16 @@ function pr_str (value, print_readably) {
        const start = value[0] ? '[' : '(';
        const end = value[0] ? ']' : ')';
        return start + value.slice(1).map((v) => pr_str(v, print_readably)).join(' ') + end;
+    } else if (value == null) { // null or undefined
+        return 'nil';
     } else if (typeof value === 'object') {
         return '{' + Object.keys(value).map((k) =>
             pr_str(k.startsWith(':') ? Symbol(k) : k, print_readably) + ' ' + pr_str(value[k], print_readably)
         ).join(' ') + '}';
     } else if (typeof value === 'string' && print_readably) {
         return quote_string(value);
+    } else if (typeof value === 'function') {
+        return '#<function>';
     } else {
         return value.toString();
     }
