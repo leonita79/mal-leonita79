@@ -8,6 +8,10 @@ function quote_string(string) {
 function pr_str (value, print_readably) {
     if (typeof value === 'symbol') {
         return value.description;
+    } else if (typeof value === 'function'
+        || (Array.isArray(value) && typeof value[0] == 'function')
+    ) {
+        return '#<function>';
     } else if (Array.isArray(value)) {
        const start = value[0] ? '[' : '(';
        const end = value[0] ? ']' : ')';
@@ -20,8 +24,6 @@ function pr_str (value, print_readably) {
         ).join(' ') + '}';
     } else if (typeof value === 'string' && print_readably) {
         return quote_string(value);
-    } else if (typeof value === 'function') {
-        return '#<function>';
     } else {
         return value.toString();
     }
