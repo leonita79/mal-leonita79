@@ -11,7 +11,6 @@ function mal_equals(a, b) {
     ) {
         return a.slice(1).every((value, index) => mal_equals(value, b[index+1]));
     } else if (typeof a === 'symbol' && typeof b === 'symbol') {
-        console.log(a, b);
         return a.description === b.description;
     } else if (typeof a === 'object' && typeof b === 'object'
         && a != null && b != null

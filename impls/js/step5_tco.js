@@ -39,13 +39,17 @@ const special = {
         return false;
     },
     'fn*': (context) => {
+        const binds = context.ast[2];
+        const code=context.ast[3];
+        const env = context.env;
+
         context.ast = [
             (...args) => {
-                return EVAL(code, new Env(context.env, binds, args));
+                return EVAL(code, new Env(env, binds, args));
             },
-            context.ast[3],
-            context.ast[2],
-            context.env
+            code,
+            binds,
+            env
         ];
         return true;
     }
