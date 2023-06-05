@@ -23,3 +23,4 @@ GRTAGS
 logs
 old
 tmp/
+.vscode
