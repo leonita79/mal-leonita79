@@ -1,5 +1,7 @@
+const read_str = require('./reader.js');
 const pr_str = require('./printer.js');
 const Env = require('./env.js');
+const fs = require('fs');
 
 function mal_equals(a, b) {
     if (a === b
@@ -22,24 +24,49 @@ function mal_equals(a, b) {
     }
 }
 
+function mal_apply(fn, ...args) {
+    if (typeof fn === 'function')
+        return fn.apply(null, args);
+    if (Array.isArray(fn) && typeof fn[0] === 'function')
+        return fn[0].apply(null, args);
+    throw "Not callable";
+}
+
 const ns = {
-    '+': (...args) => { return args.reduce((a, b) => { return a + b }, 0)},
-    '-': (...args) => { return args.reduce((a, b) => a - b )},
-    '*': (...args) => { return args.reduce((a, b) => { return a * b }, 1)},
-    '/': (...args) => { return args.reduce((a, b) => Math.trunc(a / b)); },
-    'pr-str': (...args) => { return args.map((str) => pr_str(str, true)).join(' '); },
-    'str': (...args) => { return args.map((str) => pr_str(str, false)).join(''); },
+    '+': (...args) => args.reduce(((a, b) => a + b), 0),
+    '-': (...args) => args.reduce((a, b) => a - b ),
+    '*': (...args) => args.reduce(((a, b) => a * b), 1),
+    '/': (...args) => args.reduce((a, b) => Math.trunc(a / b)),
+    'pr-str': (...args) => args.map((str) => pr_str(str, true)).join(' '),
+    'str': (...args) => args.map((str) => pr_str(str, false)).join(''),
     'prn': (...args) => { console.log(args.map((str) => pr_str(str, true)).join(' ')); return null; },
     'println': (...args) => { console.log(args.map((str) => pr_str(str, false)).join(' ')); return null; },
-    'list': (...args) => { return [ false, ...args ]; },
-    'list?': (list) => { return Array.isArray(list) && !list[0]; },
-    'empty?': (list) => { return Array.isArray(list) && list.length < 2; },
-    'count': (list) => { return Array.isArray(list) ? list.length - 1 : 0; },
+    'list': (...args) => [ false, ...args ],
+    'list?': list => Array.isArray(list) && !list[0],
+    'empty?': list => Array.isArray(list) && list.length < 2,
+    'count': list => (Array.isArray(list) ? list.length - 1 : 0),
     '=': mal_equals,
     '<': (a, b) => a < b,
     '<=': (a, b) => a <= b,
     '>': (a, b) => a > b,
     '>=': (a, b) => a >= b,
+    'read-string': read_str,
+    'slurp': filename => fs.readFileSync(filename, 'utf-8'),
+    'atom': value => ['atom', value],
+    'atom?': atom => Array.isArray(atom) && atom[0] === 'atom',
+    'deref': atom => ((Array.isArray(atom) && atom[0] === 'atom') ? atom[1] : null),
+    'reset!': (atom, value) => {
+        if(Array.isArray(atom) && atom[0] === 'atom')
+            atom[1]=value;
+        return value;
+    },
+    'swap!': (atom, fn, ...args) => {
+        if(!Array.isArray(atom) || atom[0] !== 'atom')
+            return null;
+        atom[1]=mal_apply(fn, atom[1], ...args);
+        return atom[1];
+    },
+    'apply': mal_apply
 };
 
 exports.repl_env = new Env(null, ns);

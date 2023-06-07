@@ -13,6 +13,9 @@ function pr_str (value, print_readably) {
     ) {
         return '#<function>';
     } else if (Array.isArray(value)) {
+        if (value[0] === 'atom') {
+            return '(atom ' + pr_str(value[1], print_readably) + ')';
+        }
        const start = value[0] ? '[' : '(';
        const end = value[0] ? ']' : ')';
        return start + value.slice(1).map((v) => pr_str(v, print_readably)).join(' ') + end;
