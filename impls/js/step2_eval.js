@@ -18,7 +18,7 @@ function eval_ast(ast, env) {
             return env[ast.description];
         }
         throw ast.description + ' is undefined'; 
-    } else if (Array.isArray(ast)) {
+    } else if (Array.isArray(ast) && typeof ast[0] === 'boolean') {
         return ast.map((value) => EVAL(value, env));
     } else if (typeof ast === 'object') {
         return Object.fromEntries(

@@ -1,7 +1,7 @@
 class Env {
     constructor(outer, binds, values) {
         this.outer = outer ? outer : null;
-        if (Array.isArray(binds)) {
+        if (Array.isArray(binds) && typeof binds[0] === 'boolean') {
             this.data={};
             const binds_list = binds.slice(1);
             while (binds_list.length && binds_list[0].description != '&') {
@@ -10,7 +10,7 @@ class Env {
             if (binds_list.length) {
                 this.set(binds_list[1], [false, ...values]);
             }
-        } else if (typeof binds === 'object') {
+        } else if (typeof binds === 'object' && !Array.isArray(binds)) {
             this.data = { ...binds };
         } else {
             this.data = {};

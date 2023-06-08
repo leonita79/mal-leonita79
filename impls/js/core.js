@@ -35,7 +35,7 @@ function mal_apply(fn, ...args) {
 }
 
 function quasiquote(ast) {
-    if(!Array.isArray(ast)) {
+    if(!Array.isArray(ast) || typeof ast[0] !== 'boolean') {
         return ast && typeof ast === 'object' || typeof ast === 'symbol'
             ? [ false, Symbol('quote'), ast]
             : ast;
@@ -53,7 +53,7 @@ function quasiquote(ast) {
             ) return [false, Symbol('concat'), elt[2], rest];
             return [false, Symbol('cons'), quasiquote(elt), rest];
         },
-        []
+        [false]
     );
 
     return ast[0] ? [false, Symbol('vec'), value] : value;
@@ -70,8 +70,8 @@ const ns = {
     'println': (...args) => { console.log(args.map((str) => pr_str(str, false)).join(' ')); return null; },
     'list': (...args) => [ false, ...args ],
     'list?': list => Array.isArray(list) && !list[0],
-    'empty?': list => Array.isArray(list) && list.length < 2,
-    'count': list => (Array.isArray(list) ? list.length - 1 : 0),
+    'empty?': list => Array.isArray(list) && typeof list[0] === 'boolean' && list.length < 2,
+    'count': list => ((Array.isArray(list) && typeof list[0] === 'boolean') ? list.length - 1 : 0),
     '=': mal_equals,
     '<': (a, b) => a < b,
     '<=': (a, b) => a <= b,
@@ -94,7 +94,7 @@ const ns = {
         return atom[1];
     },
     'apply': mal_apply,
-    'cons': (a, b) => (Array.isArray(b) ? [false, a].concat(b.slice(1)) : [false, a, b]),
+    'cons': (a, b) => ((Array.isArray(b) && typeof b[0] === 'boolean') ? [false, a].concat(b.slice(1)) : [false, a, b]),
     'concat': (...args) => Array.prototype.concat.apply([false], args.map(arg => arg.slice(1))),
     'vec': value => [true].concat(value.slice(1)),
 };
