@@ -2,6 +2,8 @@ const read_str = require('./reader.js');
 const pr_str = require('./printer.js');
 const Env = require('./env.js');
 const fs = require('fs');
+const { Console } = require('console');
+const { arrayBuffer } = require('stream/consumers');
 
 function mal_equals(a, b) {
     if (a === b
@@ -30,6 +32,31 @@ function mal_apply(fn, ...args) {
     if (Array.isArray(fn) && typeof fn[0] === 'function')
         return fn[0].apply(null, args);
     throw "Not callable";
+}
+
+function quasiquote(ast) {
+    if(!Array.isArray(ast)) {
+        return ast && typeof ast === 'object' || typeof ast === 'symbol'
+            ? [ false, Symbol('quote'), ast]
+            : ast;
+    }
+    if (!ast[0] && typeof ast[1] === 'symbol' && ast[1].description === 'unquote')
+        return ast[2];
+
+    const value = ast.slice(1).reduceRight(
+        (rest, elt) => {
+            if(Array.isArray(elt)
+                && elt.length > 1
+                && !elt[0]
+                && typeof elt[1] === 'symbol'
+                && elt[1].description === 'splice-unquote'
+            ) return [false, Symbol('concat'), elt[2], rest];
+            return [false, Symbol('cons'), quasiquote(elt), rest];
+        },
+        []
+    );
+
+    return ast[0] ? [false, Symbol('vec'), value] : value;
 }
 
 const ns = {
@@ -66,7 +93,11 @@ const ns = {
         atom[1]=mal_apply(fn, atom[1], ...args);
         return atom[1];
     },
-    'apply': mal_apply
+    'apply': mal_apply,
+    'cons': (a, b) => (Array.isArray(b) ? [false, a].concat(b.slice(1)) : [false, a, b]),
+    'concat': (...args) => Array.prototype.concat.apply([false], args.map(arg => arg.slice(1))),
+    'vec': value => [true].concat(value.slice(1)),
 };
 
+exports.quasiquote = quasiquote;
 exports.repl_env = new Env(null, ns);
