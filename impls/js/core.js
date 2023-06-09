@@ -36,7 +36,7 @@ function mal_apply(fn, ...args) {
 
 function quasiquote(ast) {
     if(!Array.isArray(ast) || typeof ast[0] !== 'boolean') {
-        return ast && typeof ast === 'object' || typeof ast === 'symbol'
+        return ast && (typeof ast === 'object' || (typeof ast === 'symbol' && !ast.description.startsWith(':')))
             ? [ false, Symbol('quote'), ast]
             : ast;
     }
