@@ -20,7 +20,7 @@ function mal_equals(a, b) {
         && a != null && b != null
         && Object.keys(a).length === Object.keys(b).length
     ) {
-        return Object.keys(a).every((value, index) => mal_equals(value, b[index]));
+        return Object.keys(a).every(value => mal_equals(a[value], b[value]));
     } else {
         return false;
     }
@@ -28,9 +28,9 @@ function mal_equals(a, b) {
 
 function mal_apply(fn, ...args) {
     if (typeof fn === 'function')
-        return fn.apply(null, args);
+        return fn(...args);
     if (Array.isArray(fn) && typeof fn[0] === 'function')
-        return fn[0].apply(null, args);
+        return fn[0](...args);
     throw "Not callable";
 }
 
@@ -95,8 +95,70 @@ const ns = {
     },
     'apply': mal_apply,
     'cons': (a, b) => ((Array.isArray(b) && typeof b[0] === 'boolean') ? [false, a].concat(b.slice(1)) : [false, a, b]),
-    'concat': (...args) => Array.prototype.concat.apply([false], args.map(arg => arg.slice(1))),
+    'concat': (...args) => [false].concat(...args.map(arg => arg.slice(1))),
     'vec': value => [true].concat(value.slice(1)),
+    'nth': (value, index) => {
+        if (Array.isArray(value) &&  typeof value[0] === 'boolean' && index < value.length - 1)
+            return value[index+1];
+        throw 'index out of range';
+    },
+    'first': value => ((Array.isArray(value) && typeof value[0] === 'boolean') ? value[1] : null),
+    'rest': value => ((Array.isArray(value) && typeof value[0] === 'boolean') ? [false].concat(value.slice(2)) : [false]),
+    'throw': value => { throw value; },
+    'apply': (fn, ...args) => mal_apply(fn, ...args.concat(args.pop().slice(1))),
+    'map': (fn, list) => [false].concat(list.slice(1).map(e => mal_apply(fn, e))),
+    'nil?': value => value === null,
+    'true?': value => value === true,
+    'false?': value => value === false,
+    'symbol?': value => typeof value === 'symbol' && !value.description.startsWith(':'),
+    'symbol': value => Symbol(value),
+    'keyword': value => {
+        if (typeof value === 'symbol')
+            return value.description.startsWith(':') ? value : Symbol(':' + value.description);
+        return Symbol(':' + value);
+    },
+    'keyword?': value => typeof value === 'symbol' && value.description.startsWith(':'),
+    'vector': (...args) => [true, ...args],
+    'vector?': value => Array.isArray(value) && value[0] === true,
+    'sequential?': value => Array.isArray(value) && typeof value[0] === 'boolean',
+    'hash-map': (...args) => {
+        const obj = {};
+        while(args.length) {
+            let key = args.shift();
+            key = typeof key === 'symbol' ? key.description : '"' + key;
+            obj[key] = args.shift();
+        }
+        return obj;
+    },
+    'map?': value => typeof value === 'object' && !Array.isArray(value),
+    'assoc': (obj, ...args) => {
+        obj = Object.assign({}, obj);
+        while(args.length) {
+            let key = args.shift();
+            key = typeof key === 'symbol' ? key.description : '"' + key;
+            obj[key] = args.shift();
+        }
+        return obj;
+    },
+    'dissoc': (obj, ...args) => {
+        obj = Object.assign({}, obj);
+        while(args.length) {
+            let key = args.shift();
+            key = typeof key === 'symbol' ? key.description : '"' + key;
+            delete obj[key];
+        }
+        return obj;
+    },
+    'get': (value, key) => {
+        key = typeof key === 'symbol' ? key.description : '"' + key;
+        return (value && typeof value === 'object' && !Array.isArray(value) && key in value) ? value[key] : null;
+    },
+    'contains?': (value, key) => {
+        key = typeof key === 'symbol' ? key.description : '"' + key;
+        return value && typeof value === 'object' && !Array.isArray(value) && key in value;
+    },
+    'keys': value => [false, ...Object.keys(value).map(k => k.startsWith('"') ? k.slice(1) : Symbol(k))],
+    'vals': value => [false, ...Object.values(value)]
 };
 
 exports.quasiquote = quasiquote;

@@ -23,7 +23,7 @@ function pr_str (value, print_readably) {
         return 'nil';
     } else if (typeof value === 'object') {
         return '{' + Object.keys(value).map((k) =>
-            pr_str(k.startsWith(':') ? Symbol(k) : k, print_readably) + ' ' + pr_str(value[k], print_readably)
+            pr_str(k.startsWith('"') ? k.slice(1) : Symbol(k), print_readably) + ' ' + pr_str(value[k], print_readably)
         ).join(' ') + '}';
     } else if (typeof value === 'string' && print_readably) {
         return quote_string(value);

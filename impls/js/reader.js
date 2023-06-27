@@ -70,7 +70,7 @@ class Reader {
             if (typeof key === 'symbol' && key.description.startsWith(':'))  {
                 map[key.description] = value;
             } else if (typeof key === 'string') {
-                map[key] = value;
+                map['"' + key] = value;
             } else {
                 throw 'Invalid key in map literal';
             }

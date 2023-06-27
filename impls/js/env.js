@@ -28,12 +28,15 @@ class Env {
             return null;
         }
     }
-    get(key) {
+    get(key, default_value) {
         const env = this.find(key);
         if (env) {
             return env.data[key.description];
         }
-        throw key.description + ' not found';
+        if (typeof(default_value) !== 'undefined') {
+            return default_value;
+        }
+        throw `'${key.description}' not found`;
     }
 }
 
